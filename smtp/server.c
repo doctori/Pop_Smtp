@@ -19,7 +19,7 @@ int writen(int sockfd, char *ptr, int taille);
 int readn(int sockfd, char *ptr, int taille);
 
 int socket_smtp = -1;
-char server_name[] = "laposte.net"; // nom du serveur SMTP pour faire le relay
+char server_name[] = "smtp.laposte.net"; // nom du serveur SMTP pour faire le relay
 int port = 587;
 char helo[] = "HELO esgi.prog\n";
 char auth[] = "AUTH PLAIN\n";
@@ -154,8 +154,7 @@ int writen(int sockfd, char *ptr, int taille)
 	{
 		ecrit = write(sockfd, ptr, reste);
 		if ( ecrit <= 0 )
-			printf("erreur");
-			return ecrit; /* erreur -1 */
+			return ecrit; /*erreur*/
 		reste -= ecrit;
 		ptr += ecrit;
 	} 
@@ -174,15 +173,17 @@ int readn(int sockfd, char *ptr, int taille)
 	while ( reste > 0 )
 	{
 		lu = read(sockfd,ptr,reste);
-		if (lu < 0 )
+		if (lu < 0 ){
 			printf("erreur");
-			return lu; /* erreur -1 */
-		else if ( lu == 0 )
+			return lu; /*erreur*/
+		} else if ( lu == 0 ){
 			break;
+		}
 		reste -= lu;
 		ptr += lu;
-		if ( *(ptr-2) == '\r' && *(ptr-1) == '\n' )
+		if ( *(ptr-2) == '\r' && *(ptr-1) == '\n' ){
 			break;
+		}
 	}
 	*ptr = 0x00;
 	return (taille-reste);
