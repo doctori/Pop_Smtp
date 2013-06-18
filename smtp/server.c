@@ -19,12 +19,12 @@ int writen(int sockfd, char *ptr, int taille);
 int readn(int sockfd, char *ptr, int taille);
 
 int socket_smtp = -1;
-char server_name[] = "ns0.ovh.net"; // nom du serveur SMTP pour faire le relay
+char server_name[] = "laposte.net"; // nom du serveur SMTP pour faire le relay
 int port = 587;
-char helo[] = "HELO ns0.ovh.net\n";
+char helo[] = "HELO esgi.prog\n";
 char auth[] = "AUTH PLAIN\n";
-char base64[] = "lg_mdp_en_base64\n";
-char from[] = "MAIL FROM: <clanglais@the-oz.com>\n";
+char base64[] = "AGVzZ2kucHJvZwBQYXNzd29yZDE=\n";
+char from[] = "MAIL FROM: <esgi.prog@laposte.net>\n";
 char to[] = "RCPT TO: <langlais.christophe.co@gmail.com>\n";
 char data[] = "DATA\n";
 char text[] = "To: langlais.christophe.co@gmail.com\nFrom: clanglais@the-oz.com\nSubject: this is a test message\nDate: Thu, 14 Jun 2013 12:12:12 -0200\nCeci est un message test\n.\n";
