@@ -29,6 +29,7 @@ char to[] = "RCPT TO: <langlais.christophe.co@gmail.com>\n";
 char data[] = "DATA\n";
 char text[] = "To: langlais.christophe.co@gmail.com\nFrom: esgi.prog@laposte.net\nSubject: this is a test message\nDate: Thu, 17 Jun 2013 12:12:12 -0200\nCeci est un message test\n.\n";
 char quit[] = "QUIT\n";
+int return_code = -1;
 int main (int argc, char *argv[]){
 
 	// Addresse de la socket
@@ -73,7 +74,7 @@ int main (int argc, char *argv[]){
 	
 }
 	
-void envoi (){
+int envoi (){
 
 	char buf[PACKET_SIZE+1], *ptr;
 	FILE *bulk;
@@ -136,6 +137,9 @@ void envoi (){
 	writen(socket_smtp,quit,strlen(quit));
 	readn(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
+
+	return_code = 0;
+	return return_code;
 }
 
 
