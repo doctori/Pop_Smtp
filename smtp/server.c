@@ -27,7 +27,7 @@ char base64[] = "AGVzZ2kucHJvZwBQYXNzd29yZDE=\n";
 char from[] = "MAIL FROM: <esgi.prog@laposte.net>\n";
 char to[] = "RCPT TO: <langlais.christophe.co@gmail.com>\n";
 char data[] = "DATA\n";
-char text[] = "To: langlais.christophe.co@gmail.com\nFrom: clanglais@the-oz.com\nSubject: this is a test message\nDate: Thu, 14 Jun 2013 12:12:12 -0200\nCeci est un message test\n.\n";
+char text[] = "To: langlais.christophe.co@gmail.com\nFrom: esgi.prog@laposte.net\nSubject: this is a test message\nDate: Thu, 17 Jun 2013 12:12:12 -0200\nCeci est un message test\n.\n";
 char quit[] = "QUIT\n";
 int main (int argc, char *argv[]){
 
