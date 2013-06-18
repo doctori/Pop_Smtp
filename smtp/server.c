@@ -109,8 +109,8 @@ void envoi (){
 	
 	//login/mdp base64
 	writen(socket_smtp,base64,strlen(base64));
-    readn(socket_smtp,buf,PACKET_SIZE);
-    printf(buf);
+	readn(socket_smtp,buf,PACKET_SIZE);
+	printf(buf);
 	
 	//Champ FROM
 	writen(socket_smtp,from,strlen(from));
@@ -126,7 +126,7 @@ void envoi (){
 	writen(socket_smtp,data,strlen(data));
 	readn(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
-	
+
 	//ICI ça bloque
 	writen(socket_smtp,text,strlen(text));
 	readn(socket_smtp,buf,PACKET_SIZE);
@@ -134,8 +134,8 @@ void envoi (){
 	
 	//QUIT
 	writen(socket_smtp,quit,strlen(quit));
-    readn(socket_smtp,buf,PACKET_SIZE);
-    printf(buf);
+	readn(socket_smtp,buf,PACKET_SIZE);
+	printf(buf);
 }
 
 
