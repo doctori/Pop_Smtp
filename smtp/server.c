@@ -24,20 +24,26 @@ int port = 587;
 char helo[] = "HELO esgi.prog\n";
 char auth[] = "AUTH PLAIN\n";
 char base64[] = "AGVzZ2kucHJvZwBQYXNzd29yZDE=\n";
-char from[] = "MAIL FROM: <esgi.prog@laposte.net>\n";
-char to[] = "RCPT TO: <langlais.christophe.co@gmail.com>\n";
+char * from = "esgi.prog@laposte.net";
+char * to= "langlais.christophe.co@gmail.com";
 char data[] = "DATA\n";
+char * header ;
 char text[] = "To: langlais.christophe.co@gmail.com\nFrom: esgi.prog@laposte.net\nSubject: this is a test message\nDate: Thu, 17 Jun 2013 12:12:12 -0200\nCeci est un message test\n.\n";
 char quit[] = "QUIT\n";
 int return_code = -1;
-int gen_header(){
-	int status = 1;
-	char header[] = 'To: langlais.christophe.co@gmail.com\nFrom: esgi.prog@laposte.net\nSubject: this is a test message\n'; 
-	return status;
+char * gen_from(char * from){
+	char * new_from; 
+	sprintf(new_from,"MAIL FROM: <%s>\n",from);
+	return new_from;
 }
-int gen_body(){
-	char body[] = 'Ceci est un message test\n.\n';
-	return body;
+char * gen_to(char * to){
+	char * new_to;
+	sprintf(new_to,"RCPT TO: < %s>\n",to);
+	return new_to;
+}
+char * gen_body(char * message){
+	// fera d'autres choses
+	return message;
 }
 int envoi (){
 
@@ -79,12 +85,12 @@ int envoi (){
 	printf(buf);
 	
 	//Champ FROM
-	writen(socket_smtp,from,strlen(from));
+	writen(socket_smtp,gen_from(from),strlen(gen_from(from)));
 	readn(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	
 	//Champ TO
-	writen(socket_smtp,to,strlen(to));
+	writen(socket_smtp,gen_to(to),strlen(gen_to(to)));
 	readn(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	
