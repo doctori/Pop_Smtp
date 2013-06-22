@@ -14,7 +14,7 @@
 #include <time.h>
 #define PACKET_SIZE 1024 
 #define MAX_ADDR_SIZE 256
-void contenu(char *f);
+#define SOCKET_ERROR -1
 int writen(int sockfd, char *ptr, int taille);
 int readn(int sockfd, char *ptr, int taille);
 char *gen_from(char *from);
@@ -251,14 +251,13 @@ int main (int argc, char *argv[]){
 	char * from = "esgi.prog@laposte.net";
 
 	if(argc >1){
-			to = argv[1];
-	        }else{
-	printf("TO ? \n\r");
-	fgets(to,MAX_ADDR_SIZE,stdin);
+		to = argv[1];
+	}else{
+		printf("TO ? \n\r");
+		fgets(to,MAX_ADDR_SIZE,stdin);
 	}
 	printf("Subject ?\n\r");
 	fgets(subject,MAX_ADDR_SIZE,stdin);
-	printf("Subject : %s \n to : %s",subject,to);
 	//suppression des retour a la ligne
 	 if ((strlen(to)>0) && (to[strlen (to) - 1] == '\n'))
 		         to[strlen (to) - 1] = '\0';
@@ -291,7 +290,10 @@ int main (int argc, char *argv[]){
 	// Creation de la socket en TCP SOCK_STREAM
 	socket_smtp = socket(AF_INET,SOCK_STREAM,0);
 	// Connexion du socket
-	connect(socket_smtp,(struct sockaddr *)&socketServerAddr, sizeof(socketServerAddr));
+	if(connect(socket_smtp,(struct sockaddr *)&socketServerAddr, sizeof(socketServerAddr)) == SOCKET_ERROR){
+	perror("Connect ERROR");
+	exit(2);
+}
 	envoi(from,to,subject);
 	// fermeture de la connection
 	shutdown(socket_smtp,2);
