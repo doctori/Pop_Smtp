@@ -42,7 +42,24 @@ char * gen_to(char * to){
 	return new_to;
 }
 char * gen_body(char * message){
-	// fera d'autres choses
+	/* 4.5.2.  TRANSPARENCY
+	*
+	  4.5.2.  TRANSPARENCY
+
+	           Without some provision for data transparency the character
+	           sequence "<CRLF>.<CRLF>" ends the mail text and cannot be sent
+	           by the user.  In general, users are not aware of such
+	           "forbidden" sequences.  To allow all user composed text to be
+	           transmitted transparently the following procedures are used.
+               1. Before sending a line of mail text the sender-SMTP checks
+	           the first character of the line.  If it is a period, one
+                   additional period is inserted at the beginning of the line.
+               2. When a line of mail text is received by the receiver-SMTP
+                  it checks the line.  If the line is composed of a single
+	          period it is the end of mail.  If the first character is a
+	          period and there are other characters on the line, the first
+		 character is deleted.
+		 */
 	return message;
 }
 int envoi (){
