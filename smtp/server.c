@@ -28,7 +28,7 @@ char * from = "esgi.prog@laposte.net";
 char * to= "langlais.christophe.co@gmail.com";
 char data[] = "DATA\n";
 char * header ;
-char text[] = "To: langlais.christophe.co@gmail.com\nFrom: esgi.prog@laposte.net\nSubject: this is a test message\nDate: Thu, 17 Jun 2013 12:12:12 -0200\nCeci est un message test\n.\n";
+char * text = "Ceci est un message test";
 char quit[] = "QUIT\n";
 int return_code = -1;
 char * gen_from(char * from){
@@ -42,9 +42,11 @@ char * gen_to(char * to){
 	return new_to;
 }
 char * gen_body(char * message){
+	int i = 0;
+	int nbr_pts = 0;
+	int message_length = 0;
+	printf("%s RECEIVED",message);
 	/* 4.5.2.  TRANSPARENCY
-	*
-	  4.5.2.  TRANSPARENCY
 
 	           Without some provision for data transparency the character
 	           sequence "<CRLF>.<CRLF>" ends the mail text and cannot be sent
@@ -60,14 +62,36 @@ char * gen_body(char * message){
 	          period and there are other characters on the line, the first
 		 character is deleted.
 		 */
-	return message;
+	// Parcours et compte le nimbre de points
+	while(message[i] != '\0'){
+		if(message[i] == '.'){
+			nbr_pts++;
+		
+		}
+		i++;
+	}
+	//parcours input et duplication des points
+	i = 0;
+	message_length = strlen(message) + nbr_pts;
+	char * new_body = malloc(message_length * sizeof(char));
+	char * body_ended = malloc((message_length+ 3) * sizeof(char));
+	nbr_pts = 0;
+	while(message[i] != '\0'){
+		new_body[i+nbr_pts]=message[i];
+		if(message[i] == '.'){
+			nbr_pts++;
+			new_body[i+nbr_pts]='.';
+		}
+		i++;
+	}
+	body_ended=strcat(new_body,"\r\n.\r\n");
+	return body_ended;
 }
 int envoi (){
 
-	char buf[PACKET_SIZE+1], *ptr;
+	char buf[PACKET_SIZE+1], *ptr,tmp;
 	FILE *bulk;
-	int nb;
-
+	int nb,rc,length = sizeof(int);
 	bulk = stdin;
 	buf[0]= 0x00;
 	
@@ -79,7 +103,7 @@ int envoi (){
 	 * MAIL FROM: -> 250 ok
 	 * RCPT TO: -> 250 ok
 	 * DATA -> 354 go ahead
-	 * Le message finissant par "." -> 250 ok 1371479777 qp 11841
+	 * Le message finissant par "." (-> 250 ok 1371479777 qp 11841
 	 * QUIT -> 221
 	 */
 	
@@ -110,15 +134,18 @@ int envoi (){
 	writen(socket_smtp,gen_to(to),strlen(gen_to(to)));
 	readn(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
-	
+	//vidage du buffer :
+	strncpy(buf,"",sizeof(buf));
 	//Champ DATA
 	writen(socket_smtp,data,strlen(data));
+	nb = 0;
 	readn(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
-
-	//ICI ça bloque
-	writen(socket_smtp,text,strlen(text));
-	readn(socket_smtp,buf,PACKET_SIZE);
+	strncpy(buf,"",sizeof(buf));
+	//printf("AFTER %s \n",gen_body(text));
+	//ICI ca bloque
+	rc = writen(socket_smtp,gen_body(text),strlen(gen_body(text)));
+	read(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	
 	//QUIT
@@ -138,15 +165,26 @@ int envoi (){
  */
  
 int writen(int sockfd, char *ptr, int taille)
-{
-	int reste, ecrit;
+{	
+	char tmp;  
+	int reste, ecrit, length = sizeof(int);
 	reste = taille;
 	// lire tant que n ocets restant (reste) non nul
 	while ( reste > 0 )
 	{
 		ecrit = write(sockfd, ptr, reste);
-		if ( ecrit <= 0 )
-			return ecrit; /*erreur*/
+		printf("writting : %s",ptr);
+		if ( ecrit < 0 ){
+			perror("write-error");
+	                 ecrit = getsockopt(sockfd,SOL_SOCKET, SO_ERROR,&tmp,&length);
+	                if(ecrit == 0){
+	                        // Erreur asynchrone
+					errno = tmp;
+					perror("SO_ERROR was");
+				}
+				close(sockfd);
+				exit(-1);
+			}
 		reste -= ecrit;
 		ptr += ecrit;
 	} 
