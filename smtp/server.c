@@ -30,50 +30,15 @@ char data[] = "DATA\n";
 char text[] = "To: langlais.christophe.co@gmail.com\nFrom: esgi.prog@laposte.net\nSubject: this is a test message\nDate: Thu, 17 Jun 2013 12:12:12 -0200\nCeci est un message test\n.\n";
 char quit[] = "QUIT\n";
 int return_code = -1;
-int main (int argc, char *argv[]){
-
-	// Addresse de la socket
-	struct sockaddr_in socketServerAddr;
-	
-	// Description du host serveur
-	struct hostent *serverEntity;
-	
-	// Addresse du serveur
-	unsigned long serverAddr; 
-
-	// Initialisation de l'adresse du socket serveur a zero
-	bzero((void *)&socketServerAddr,sizeof(socketServerAddr));
-
-	// Convertion de l'adresse ip
-	serverAddr = inet_addr(server_name); 
-	if ( (long)serverAddr != (long)-1)
-		bcopy((void *)&serverAddr,(void*)&socketServerAddr.sin_addr,sizeof(serverAddr));
-	else
-	{
-		serverEntity = gethostbyname(server_name);
-		bcopy((void *)serverEntity->h_addr,(void *)&socketServerAddr.sin_addr,serverEntity->h_length);
-	}
-	
-	// Htons pour utiliser l'endian du reseau (host to network)
-	socketServerAddr.sin_port = htons(port);
-	
-	// Adresse IPv4
-	socketServerAddr.sin_family = AF_INET;
-	
-	// Creation de la socket en TCP SOCK_STREAM
-	socket_smtp = socket(AF_INET,SOCK_STREAM,0);
-	
-	// Connexion du socket
-	connect(socket_smtp,(struct sockaddr *)&socketServerAddr, sizeof(socketServerAddr));
-	envoi();
-	
-	// fermeture de la connection
-	shutdown(socket_smtp,2);
-	close(socket_smtp);
-	return 0;
-	
+int gen_header(){
+	int status = 1;
+	char header[] = 'To: langlais.christophe.co@gmail.com\nFrom: esgi.prog@laposte.net\nSubject: this is a test message\n'; 
+	return status;
 }
-	
+int gen_body(){
+	char body[] = 'Ceci est un message test\n.\n';
+	return body;
+}
 int envoi (){
 
 	char buf[PACKET_SIZE+1], *ptr;
@@ -192,3 +157,38 @@ int readn(int sockfd, char *ptr, int taille)
 	*ptr = 0x00;
 	return (taille-reste);
 }
+int main (int argc, char *argv[]){
+	// Addresse de la socket
+ 	struct sockaddr_in socketServerAddr;
+	// Description du host serveur
+	struct hostent *serverEntity;
+
+	// Addresse du serveur
+	unsigned long serverAddr;
+	
+	// Initialisation de l'adresse du socket serveur a zero
+	bzero((void *)&socketServerAddr,sizeof(socketServerAddr));
+	
+	// Convertion de l'adresse ip
+	serverAddr = inet_addr(server_name);
+	if ( (long)serverAddr != (long)-1)
+		bcopy((void *)&serverAddr,(void*)&socketServerAddr.sin_addr,sizeof(serverAddr));
+	else{
+		serverEntity = gethostbyname(server_name);
+		bcopy((void *)serverEntity->h_addr,(void *)&socketServerAddr.sin_addr,serverEntity->h_length);
+	}
+	// Htons pour utiliser l'endian du reseau (host to network)
+	socketServerAddr.sin_port = htons(port);
+	// Adresse IPv4
+	socketServerAddr.sin_family = AF_INET;
+	// Creation de la socket en TCP SOCK_STREAM
+	socket_smtp = socket(AF_INET,SOCK_STREAM,0);
+	// Connexion du socket
+	connect(socket_smtp,(struct sockaddr *)&socketServerAddr, sizeof(socketServerAddr));
+	envoi();
+	// fermeture de la connection
+	shutdown(socket_smtp,2);
+	close(socket_smtp);
+																	return 0;
+}
+
