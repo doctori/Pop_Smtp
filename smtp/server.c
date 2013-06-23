@@ -13,13 +13,13 @@
 #include <sys/wait.h>
 #include <time.h>
 #define PACKET_SIZE 1024 
-
+#define MAX_ADDR_SIZE 256
 void contenu(char *f);
 int writen(int sockfd, char *ptr, int taille);
 int readn(int sockfd, char *ptr, int taille);
 char *gen_from(char *from);
 char *gen_to(char *to);
-char *gen_body(char *fichier);
+char *gen_body(char *fichier,char *from,char *to,char *subject);
 
 int socket_smtp = -1;
 char server_name[] = "smtp.laposte.net"; // nom du serveur SMTP pour faire le relay
@@ -42,15 +42,23 @@ char * gen_to(char * to){
 	sprintf(new_to,"RCPT TO: <%s>\n",to);
 	return new_to;
 }
-char * gen_body(char * fichier){
+char * gen_body(char * fichier,char *from,char *to,char *subject){
 	int i,lu,j,current_length = 0;
 	int ft;
 	int nbr_pts = 0;
 	int BUF_SIZE = 1024;
 	int message_length = 0;
 	size_t n = BUF_SIZE ;
+	char *header = malloc(sizeof(char)*512);
 	char *buf = malloc(sizeof(char)*n);
 	char *message = malloc((sizeof(char)*n)*20);
+	//construction d'une part des headers
+	sprintf(header,"Delivered-To: pedro  <%s> \r\nFrom: nico  <%s> \r\nReply-To: nicO <%s> \r\nTo: Pedro <%s> \r\nSubject: %s \r\n\r\n",to,from,from,to,subject);
+	for(i=0;i<strlen(header);i++){
+		message[i]=header[i];
+		current_length++;
+	}
+	free(header);
 	ft=open(fichier,O_RDONLY);
 	if(ft<0){
 		perror("Erreur pour l'ouverture du fichier de message\n");
@@ -63,15 +71,7 @@ char * gen_body(char * fichier){
 				perror("Erreur Lecteur fichier message\n");
 				exit(2);
 			}
-		
 		for(j=0;j<lu;j++){
-			//On ajoute lde CR au LF pour permettre l'interepretation des header au serveur smtp
-			if(j>2){
-				if(buf[j] == '\n' && buf[j-1] != '\r'){
-					message[current_length+j]='\r';
-					current_length++;
-				}
-			}
 			message[current_length+j]=buf[j];
 		}
 		current_length=current_length+lu;
@@ -93,11 +93,9 @@ char * gen_body(char * fichier){
 		 character is deleted.
 		 */
 	// On ajoute 128 a la longueur du message initiale pour la gestion des points
-	printf("MESSAGE : \n %s",message);
 	message_length = strlen(message) + 128;
 	char * new_body = malloc(message_length * sizeof(char));
 	char * body_ended = malloc((message_length) * sizeof(char));
-	printf(" Message Length : %d",message_length);
 	// Parcours et compte le nimbre de points
 	for(i=0;i<strlen(message)+nbr_pts;i++){
 		new_body[i+nbr_pts] = message[i];
@@ -110,10 +108,9 @@ char * gen_body(char * fichier){
 		printf("%c",new_body[i+nbr_pts]);
 	}
 	body_ended=strcat(new_body,"\r\n.\r\n");
-	printf("SENDING : \n\r %s",body_ended);
 	return body_ended;
 }
-int envoi (char *from,char *to){
+int envoi (char *from,char *to,char *subject){
 
 	char buf[PACKET_SIZE+1], *ptr,tmp;
 	FILE *bulk;
@@ -170,7 +167,7 @@ int envoi (char *from,char *to){
 	strncpy(buf,"",sizeof(buf));
 	//printf("AFTER %s \n",gen_body(text));
 	//ICI ca bloque
-	rc = writen(socket_smtp,gen_body(text),strlen(gen_body(text)));
+	rc = writen(socket_smtp,gen_body(text,from,to,subject),strlen(gen_body(text,from,to,subject)));
 	read(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	
@@ -248,14 +245,25 @@ int readn(int sockfd, char *ptr, int taille)
 	return (taille-reste);
 }
 int main (int argc, char *argv[]){
+	char *subject = malloc(sizeof(char)*256);
 	//traitement parametres entree
 	char *to = malloc(sizeof(char)*256);
+	char * from = "esgi.prog@laposte.net";
+
 	if(argc >1){
 			to = argv[1];
 	        }else{
-	        	to = "lerouge.pierre@gmail.com";
-	        }
-	char * from = "esgi.prog@laposte.net";
+	printf("TO ? \n\r");
+	fgets(to,MAX_ADDR_SIZE,stdin);
+	}
+	printf("Subject ?\n\r");
+	fgets(subject,MAX_ADDR_SIZE,stdin);
+	printf("Subject : %s \n to : %s",subject,to);
+	//suppression des retour a la ligne
+	 if ((strlen(to)>0) && (to[strlen (to) - 1] == '\n'))
+		         to[strlen (to) - 1] = '\0';
+	  if ((strlen(subject)>0) && (to[strlen (subject) - 1] == '\n'))
+		         to[strlen (subject) - 1] = '\0';
 
 	// Addresse de la socket
  	struct sockaddr_in socketServerAddr;
@@ -284,7 +292,7 @@ int main (int argc, char *argv[]){
 	socket_smtp = socket(AF_INET,SOCK_STREAM,0);
 	// Connexion du socket
 	connect(socket_smtp,(struct sockaddr *)&socketServerAddr, sizeof(socketServerAddr));
-	envoi(from,to);
+	envoi(from,to,subject);
 	// fermeture de la connection
 	shutdown(socket_smtp,2);
 	close(socket_smtp);
