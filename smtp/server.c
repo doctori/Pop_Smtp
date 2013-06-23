@@ -28,7 +28,7 @@ char * from = "esgi.prog@laposte.net";
 char * to= "lerouge.pierre@gmail.com";
 char data[] = "DATA\n";
 char * header ;
-char * text = "From: Ze Best Group <esgi.prog@laposte.net> \r\n To: Piero <lerouge.pierre@gmail.com> \r\n Subject: 'Yes you can' \r\n Ceci est un message test";
+char * text = "message.txt";
 char quit[] = "QUIT\n";
 int return_code = -1;
 char * gen_from(char * from){
@@ -41,10 +41,37 @@ char * gen_to(char * to){
 	sprintf(new_to,"RCPT TO: <%s>\n",to);
 	return new_to;
 }
-char * gen_body(char * message){
-	int i = 0;
+char * gen_body(char * fichier){
+	int i,lu,j,current_length = 0;
+	int ft;
 	int nbr_pts = 0;
+	int BUF_SIZE = 1024;
 	int message_length = 0;
+	size_t n = BUF_SIZE ;
+	char *buf = malloc(sizeof(char)*n);
+	char *message = malloc((sizeof(char)*n)*20);
+	ft=open(fichier,O_RDONLY);
+	if(ft<0){
+		perror("Erreur pour l'ouverture du fichier de message");
+		exit(2);
+	}
+	//on charge le fichier en mem
+	do{
+		lu=read(ft,buf,BUF_SIZE);
+		if(lu<0){
+				perror("Erreur Lecteur fichier message");
+				exit(2);
+			}
+		for(j=0;j<lu;j++){
+			//On ajoute lde CR au LF pour permettre l'interepretation des header au serveur smtp
+			if(buf[j] == '\n' && buf[j-1] != '\r'){
+				message[current_length+j]='\r';
+				current_length++;
+			}
+			message[current_length+j]=buf[j];
+		}
+		current_length=current_length+lu;
+	}while(lu>0);
 	/* 4.5.2.  TRANSPARENCY
 
 	           Without some provision for data transparency the character
@@ -62,7 +89,7 @@ char * gen_body(char * message){
 		 character is deleted.
 		 */
 	// Parcours et compte le nimbre de points
-	while(message[i] != '\0'){
+	for(i=0;i<strlen(message);i++){
 		if(message[i] == '.'){
 			nbr_pts++;
 		
