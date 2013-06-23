@@ -21,14 +21,14 @@ int readn(int sockfd, char *ptr, int taille);
 int socket_smtp = -1;
 char server_name[] = "smtp.laposte.net"; // nom du serveur SMTP pour faire le relay
 int port = 587;
-char helo[] = "HELO esgi.prog\n";
+char helo[] = "EHLO esgi.prog\n";
 char auth[] = "AUTH PLAIN\n";
 char base64[] = "AGVzZ2kucHJvZwBQYXNzd29yZDE=\n";
 char * from = "esgi.prog@laposte.net";
-char * to= "langlais.christophe.co@gmail.com";
+char * to= "lerouge.pierre@gmail.com";
 char data[] = "DATA\n";
 char * header ;
-char * text = "Ceci est un message test";
+char * text = "From: Ze Best Group <esgi.prog@laposte.net> \r\n To: Piero <lerouge.pierre@gmail.com> \r\n Subject: 'Yes you can' \r\n Ceci est un message test";
 char quit[] = "QUIT\n";
 int return_code = -1;
 char * gen_from(char * from){
@@ -38,14 +38,13 @@ char * gen_from(char * from){
 }
 char * gen_to(char * to){
 	char * new_to;
-	sprintf(new_to,"RCPT TO: < %s>\n",to);
+	sprintf(new_to,"RCPT TO: <%s>\n",to);
 	return new_to;
 }
 char * gen_body(char * message){
 	int i = 0;
 	int nbr_pts = 0;
 	int message_length = 0;
-	printf("%s RECEIVED",message);
 	/* 4.5.2.  TRANSPARENCY
 
 	           Without some provision for data transparency the character
@@ -207,6 +206,9 @@ int readn(int sockfd, char *ptr, int taille)
 			printf("erreur");
 			return lu; /*erreur*/
 		} else if ( lu == 0 ){
+			printf("Server is closing the connection\n");
+			close(sockfd);
+			exit(-1);
 			break;
 		}
 		reste -= lu;
