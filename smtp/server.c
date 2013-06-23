@@ -11,12 +11,15 @@
 #include <errno.h>
 #include <signal.h>
 #include <sys/wait.h>
-
+#include <time.h>
 #define PACKET_SIZE 1024 
 
 void contenu(char *f);
 int writen(int sockfd, char *ptr, int taille);
 int readn(int sockfd, char *ptr, int taille);
+char *gen_from(char *from);
+char *gen_to(char *to);
+char *gen_body(char *fichier);
 
 int socket_smtp = -1;
 char server_name[] = "smtp.laposte.net"; // nom du serveur SMTP pour faire le relay
@@ -24,8 +27,6 @@ int port = 587;
 char helo[] = "EHLO esgi.prog\n";
 char auth[] = "AUTH PLAIN\n";
 char base64[] = "AGVzZ2kucHJvZwBQYXNzd29yZDE=\n";
-char * from = "esgi.prog@laposte.net";
-char * to= "lerouge.pierre@gmail.com";
 char data[] = "DATA\n";
 char * header ;
 char * text = "message.txt";
@@ -52,21 +53,24 @@ char * gen_body(char * fichier){
 	char *message = malloc((sizeof(char)*n)*20);
 	ft=open(fichier,O_RDONLY);
 	if(ft<0){
-		perror("Erreur pour l'ouverture du fichier de message");
+		perror("Erreur pour l'ouverture du fichier de message\n");
 		exit(2);
 	}
 	//on charge le fichier en mem
 	do{
 		lu=read(ft,buf,BUF_SIZE);
 		if(lu<0){
-				perror("Erreur Lecteur fichier message");
+				perror("Erreur Lecteur fichier message\n");
 				exit(2);
 			}
+		
 		for(j=0;j<lu;j++){
 			//On ajoute lde CR au LF pour permettre l'interepretation des header au serveur smtp
-			if(buf[j] == '\n' && buf[j-1] != '\r'){
-				message[current_length+j]='\r';
-				current_length++;
+			if(j>2){
+				if(buf[j] == '\n' && buf[j-1] != '\r'){
+					message[current_length+j]='\r';
+					current_length++;
+				}
 			}
 			message[current_length+j]=buf[j];
 		}
@@ -88,32 +92,28 @@ char * gen_body(char * fichier){
 	          period and there are other characters on the line, the first
 		 character is deleted.
 		 */
-	// Parcours et compte le nimbre de points
-	for(i=0;i<strlen(message);i++){
-		if(message[i] == '.'){
-			nbr_pts++;
-		
-		}
-		i++;
-	}
-	//parcours input et duplication des points
-	i = 0;
-	message_length = strlen(message) + nbr_pts;
+	// On ajoute 128 a la longueur du message initiale pour la gestion des points
+	printf("MESSAGE : \n %s",message);
+	message_length = strlen(message) + 128;
 	char * new_body = malloc(message_length * sizeof(char));
-	char * body_ended = malloc((message_length+ 3) * sizeof(char));
-	nbr_pts = 0;
-	while(message[i] != '\0'){
-		new_body[i+nbr_pts]=message[i];
-		if(message[i] == '.'){
-			nbr_pts++;
-			new_body[i+nbr_pts]='.';
+	char * body_ended = malloc((message_length) * sizeof(char));
+	printf(" Message Length : %d",message_length);
+	// Parcours et compte le nimbre de points
+	for(i=0;i<strlen(message)+nbr_pts;i++){
+		new_body[i+nbr_pts] = message[i];
+		if((i>2) && (message[i] == '.')){
+			if(((message[i-1] == '\n') || (message[i-1] == '\r')) && ((message[i+1] == '\r') ||(message[i+1] =='\n'))){
+				nbr_pts++;
+				new_body[i+nbr_pts]='.';
+			}	
 		}
-		i++;
+		printf("%c",new_body[i+nbr_pts]);
 	}
 	body_ended=strcat(new_body,"\r\n.\r\n");
+	printf("SENDING : \n\r %s",body_ended);
 	return body_ended;
 }
-int envoi (){
+int envoi (char *from,char *to){
 
 	char buf[PACKET_SIZE+1], *ptr,tmp;
 	FILE *bulk;
@@ -248,6 +248,15 @@ int readn(int sockfd, char *ptr, int taille)
 	return (taille-reste);
 }
 int main (int argc, char *argv[]){
+	//traitement parametres entree
+	char *to = malloc(sizeof(char)*256);
+	if(argc >1){
+			to = argv[1];
+	        }else{
+	        	to = "lerouge.pierre@gmail.com";
+	        }
+	char * from = "esgi.prog@laposte.net";
+
 	// Addresse de la socket
  	struct sockaddr_in socketServerAddr;
 	// Description du host serveur
@@ -275,7 +284,7 @@ int main (int argc, char *argv[]){
 	socket_smtp = socket(AF_INET,SOCK_STREAM,0);
 	// Connexion du socket
 	connect(socket_smtp,(struct sockaddr *)&socketServerAddr, sizeof(socketServerAddr));
-	envoi();
+	envoi(from,to);
 	// fermeture de la connection
 	shutdown(socket_smtp,2);
 	close(socket_smtp);
