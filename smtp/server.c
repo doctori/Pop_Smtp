@@ -100,6 +100,7 @@ char * gen_body(char * fichier,char *from,char *to,char *subject){
 		}
 		printf("%c",new_body[i+nbr_pts]);
 	}
+
 	body_ended=strcat(new_body,"\r\n.\r\n");
 	return body_ended;
 }
@@ -171,11 +172,25 @@ int envoi (int socket_smtp,char *from,char *to,char *subject){
 
 
 /*
+ * callback :
+ * 	Permet le retour pour le client (char par char)
+ */
+
+int callback(int sockfd,char *char_received)
+{
+	int ecrit;
+	ecrit = write(sockfd,char_received,sizeof(char));
+	if( ecrit < 0){
+		perror("CallBack Char Error (cleint disconnected while writting ?)");
+		exit(5);
+	}
+	return(0);
+}
+/*
  * writen:
  *   write 'n' octets sur le descripteur du socket
  *   retourne le nombre de octets ecrit ou -1 en cas d'erreur
  */
- 
 int writen(int sockfd, char *ptr, int taille)
 {	
 	char tmp;  
@@ -215,6 +230,7 @@ int readn(int sockfd, char *ptr, int taille)
 	while ( reste > 0 )
 	{
 		lu = read(sockfd,ptr,reste);
+		callback(sockfd,ptr);
 		if (lu < 0 ){
 			printf("erreur");
 			return lu; /*erreur*/
@@ -224,9 +240,10 @@ int readn(int sockfd, char *ptr, int taille)
 			exit(-1);
 			break;
 		}
+
 		reste -= lu;
 		ptr += lu;
-		writen(sockfd,ptr,taille);
+
 		if ( *(ptr-2) == '\r' && *(ptr-1) == '\n' ){
 			break;
 		}
