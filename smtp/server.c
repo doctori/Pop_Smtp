@@ -12,17 +12,10 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <time.h>
-#define PACKET_SIZE 1024 
-#define MAX_ADDR_SIZE 256
-#define SOCKET_ERROR -1
-int writen(int sockfd, char *ptr, int taille);
-int readn(int sockfd, char *ptr, int taille);
-char *gen_from(char *from);
-char *gen_to(char *to);
-char *gen_body(char *fichier,char *from,char *to,char *subject);
 
-int socket_smtp = -1;
-char server_name[] = "smtp.laposte.net"; // nom du serveur SMTP pour faire le relay
+#include "server.h"
+
+
 int port = 587;
 char helo[] = "EHLO esgi.prog\n";
 char auth[] = "AUTH PLAIN\n";
@@ -110,12 +103,9 @@ char * gen_body(char * fichier,char *from,char *to,char *subject){
 	body_ended=strcat(new_body,"\r\n.\r\n");
 	return body_ended;
 }
-int envoi (char *from,char *to,char *subject){
+int envoi (int socket_smtp,char *from,char *to,char *subject){
 
-	char buf[PACKET_SIZE+1], *ptr,tmp;
-	FILE *bulk;
-	int nb,rc,length = sizeof(int);
-	bulk = stdin;
+	char buf[PACKET_SIZE+1];
 	buf[0]= 0x00;
 	
 	/* RFC 
@@ -161,13 +151,12 @@ int envoi (char *from,char *to,char *subject){
 	strncpy(buf,"",sizeof(buf));
 	//Champ DATA
 	writen(socket_smtp,data,strlen(data));
-	nb = 0;
 	readn(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	strncpy(buf,"",sizeof(buf));
 	//printf("AFTER %s \n",gen_body(text));
 	//ICI ca bloque
-	rc = writen(socket_smtp,gen_body(text,from,to,subject),strlen(gen_body(text,from,to,subject)));
+	writen(socket_smtp,gen_body(text,from,to,subject),strlen(gen_body(text,from,to,subject)));
 	read(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	
@@ -217,7 +206,7 @@ return (taille-reste);
 /*
  * readn:
  *   read 'n' octets jusqu'a la fin
- *   retourne le nombre de octets lu ou -1 en cas d'erreur
+ *   retourne le nombre d'octets lu ou -1 en cas d'erreur
  */
 int readn(int sockfd, char *ptr, int taille)
 {
@@ -237,6 +226,7 @@ int readn(int sockfd, char *ptr, int taille)
 		}
 		reste -= lu;
 		ptr += lu;
+		writen(sockfd,ptr,taille);
 		if ( *(ptr-2) == '\r' && *(ptr-1) == '\n' ){
 			break;
 		}
@@ -244,98 +234,13 @@ int readn(int sockfd, char *ptr, int taille)
 	*ptr = 0x00;
 	return (taille-reste);
 }
-int main (int argc, char *argv[]){
-	char *subject = malloc(sizeof(char)*256);
-	//traitement parametres entree
-	char *to = malloc(sizeof(char)*256);
-	char * from = "esgi.prog@laposte.net";
-	int listenfd,connfd,port;
-	socklen_t len;
-	struct sockaddr_in servaddr,cliaddr;
-	char adresseIP[16],buff[50];
-	struct sigaction zombies;
-//On ignore (SIG_IGN) le signal que chaque fils qui se termine envoie Ã  son pÃ¨re (SIGCHLD)
-//Ainsi, les fils ne passent pas par l'Etat zombie
-signal(SIGCHLD,SIG_IGN);
-listenfd=socket(AF_INET,SOCK_STREAM,0);//Creation du socket
-if(listenfd < 0){
-	perror("Error While Opening The Sotcket");
-	exit(1);
+int reception(int socket){
+ char *buffer = malloc(sizeof(char)*BUFFER_SIZE);
+ bzero(buffer,BUFFER_SIZE);
+ readn(socket,buffer,PACKET_SIZE);
+ printf(buffer);
+ return 0;
+
 }
-bzero(&servaddr,sizeof(servaddr));//mise a zero de la structure
 
-servaddr.sin_family=AF_INET;//IPv4
-servaddr.sin_addr.s_addr=htonl(INADDR_ANY);//connexion acceptÃ©e pour toute adresse(adresse de l'hote convertit   en adresse reseau)
-servaddr.sin_port=htons(atoi(25));//port sur lequel ecoute le serveur
-
-bind(listenfd,(struct sockaddr *)& servaddr,sizeof(servaddr));//on relie le descripteur à la structure de socket
-listen(listenfd,10);//convertit la socket en socket passive,attendant les connexions.   10=nombre maximal de clients mis en attente de connexion par le noyau
-
-for(;;)
-{
-	len=sizeof(cliaddr);	
-	connfd=accept(listenfd,(struct sockaddr*)&cliaddr,&len);
-	port=ntohs(cliaddr.sin_port);
-	inet_ntop(AF_INET,&cliaddr.sin_addr,adresseIP,sizeof(adresseIP));
-	printf("connexion de %s, port %d\n",adresseIP,port);
-	if(fork()==0)
-	{
-		close(listenfd);
-		traitementclient(connfd);//fonction chargÃ©e de travailler avec le client
-		close(connfd);
-		exit(0);
-	}
-	
-	close(connfd);
-}
-	if(argc >1){
-		to = argv[1];
-	}else{
-		printf("TO ? \n\r");
-		fgets(to,MAX_ADDR_SIZE,stdin);
-	}
-	printf("Subject ?\n\r");
-	fgets(subject,MAX_ADDR_SIZE,stdin);
-	//suppression des retour a la ligne
-	 if ((strlen(to)>0) && (to[strlen (to) - 1] == '\n'))
-		         to[strlen (to) - 1] = '\0';
-	  if ((strlen(subject)>0) && (to[strlen (subject) - 1] == '\n'))
-		         to[strlen (subject) - 1] = '\0';
-
-	// Addresse de la socket
- 	struct sockaddr_in socketServerAddr;
-	// Description du host serveur
-	struct hostent *serverEntity;
-
-	// Addresse du serveur
-	unsigned long serverAddr;
-	
-	// Initialisation de l'adresse du socket serveur a zero
-	bzero((void *)&socketServerAddr,sizeof(socketServerAddr));
-	
-	// Convertion de l'adresse ip
-	serverAddr = inet_addr(server_name);
-	if ( (long)serverAddr != (long)-1)
-		bcopy((void *)&serverAddr,(void*)&socketServerAddr.sin_addr,sizeof(serverAddr));
-	else{
-		serverEntity = gethostbyname(server_name);
-		bcopy((void *)serverEntity->h_addr,(void *)&socketServerAddr.sin_addr,serverEntity->h_length);
-	}
-	// Htons pour utiliser l'endian du reseau (host to network)
-	socketServerAddr.sin_port = htons(port);
-	// Adresse IPv4
-	socketServerAddr.sin_family = AF_INET;
-	// Creation de la socket en TCP SOCK_STREAM
-	socket_smtp = socket(AF_INET,SOCK_STREAM,0);
-	// Connexion du socket
-	if(connect(socket_smtp,(struct sockaddr *)&socketServerAddr, sizeof(socketServerAddr)) == SOCKET_ERROR){
-	perror("Connect ERROR");
-	exit(2);
-}
-	envoi(from,to,subject);
-	// fermeture de la connection
-	shutdown(socket_smtp,2);
-	close(socket_smtp);
-																	return 0;
-}
 

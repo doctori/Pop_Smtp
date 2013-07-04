@@ -3,15 +3,14 @@
  *
  */
 #include <stdlib.h>
-#include "SmtpReplies.h"
+#include "smtpReplies.h"
 
-BEGIN_STRUCT_DECLARATION(SmtpReply)
+typedef struct{
 	int replyCode;
 	const char* replyText;
-END_STRUCT_DECLARATION(SmtpReply)
+}SmtpReply;
 
-SmtpReply smtpReplies[] =
-{
+SmtpReply smtpReplies[] = {
 	{211, "System status\n"},
 	{214, "Help message\n"},
 	{220, "Service ready\n"},
@@ -32,7 +31,8 @@ SmtpReply smtpReplies[] =
 
 const char* GetSmtpReplyTextByCode(int replyCode)
 {
-	for (int i = 0; i < SMTP_REPLIES_COUNT; i++)
+	int i;
+	for(i = 0; i < SMTP_REPLIES_COUNT; i++)
 	{
 		if (smtpReplies[i].replyCode == replyCode)
 			return smtpReplies[i].replyText;
