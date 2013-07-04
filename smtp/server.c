@@ -249,7 +249,45 @@ int main (int argc, char *argv[]){
 	//traitement parametres entree
 	char *to = malloc(sizeof(char)*256);
 	char * from = "esgi.prog@laposte.net";
+	int listenfd,connfd,port;
+	socklen_t len;
+	struct sockaddr_in servaddr,cliaddr;
+	char adresseIP[16],buff[50];
+	struct sigaction zombies;
+//On ignore (SIG_IGN) le signal que chaque fils qui se termine envoie Ã  son pÃ¨re (SIGCHLD)
+//Ainsi, les fils ne passent pas par l'Etat zombie
+signal(SIGCHLD,SIG_IGN);
+listenfd=socket(AF_INET,SOCK_STREAM,0);//Creation du socket
+if(listenfd < 0){
+	perror("Error While Opening The Sotcket");
+	exit(1);
+}
+bzero(&servaddr,sizeof(servaddr));//mise a zero de la structure
 
+servaddr.sin_family=AF_INET;//IPv4
+servaddr.sin_addr.s_addr=htonl(INADDR_ANY);//connexion acceptÃ©e pour toute adresse(adresse de l'hote convertit   en adresse reseau)
+servaddr.sin_port=htons(atoi(25));//port sur lequel ecoute le serveur
+
+bind(listenfd,(struct sockaddr *)& servaddr,sizeof(servaddr));//on relie le descripteur à la structure de socket
+listen(listenfd,10);//convertit la socket en socket passive,attendant les connexions.   10=nombre maximal de clients mis en attente de connexion par le noyau
+
+for(;;)
+{
+	len=sizeof(cliaddr);	
+	connfd=accept(listenfd,(struct sockaddr*)&cliaddr,&len);
+	port=ntohs(cliaddr.sin_port);
+	inet_ntop(AF_INET,&cliaddr.sin_addr,adresseIP,sizeof(adresseIP));
+	printf("connexion de %s, port %d\n",adresseIP,port);
+	if(fork()==0)
+	{
+		close(listenfd);
+		traitementclient(connfd);//fonction chargÃ©e de travailler avec le client
+		close(connfd);
+		exit(0);
+	}
+	
+	close(connfd);
+}
 	if(argc >1){
 		to = argv[1];
 	}else{
