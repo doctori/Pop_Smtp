@@ -20,5 +20,6 @@ char *gen_to(char *to);
 char *gen_body(char *fichier,char *from,char *to,char *subject);
 int reception(int socket);
 int envoi (int socket_smtp,char *from,char *to,char *subject);
+int callback(int sockfd,char *char_received);
 
 #endif /* SERVER_H_ */

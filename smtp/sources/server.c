@@ -12,11 +12,13 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <time.h>
-
 #include "server.h"
+#include "smtpReplies.h"
+
 
 
 int port = 587;
+int smtpStatus = 0;
 char helo[] = "EHLO esgi.prog\n";
 char auth[] = "AUTH PLAIN\n";
 char base64[] = "AGVzZ2kucHJvZwBQYXNzd29yZDE=\n";
@@ -167,7 +169,7 @@ int envoi (int socket_smtp,char *from,char *to,char *subject){
 	printf(buf);
 
 	return_code = 0;
-	return return_code;
+	return(return_code);
 }
 
 
@@ -181,7 +183,7 @@ int callback(int sockfd,char *char_received)
 	int ecrit;
 	ecrit = write(sockfd,char_received,sizeof(char));
 	if( ecrit < 0){
-		perror("CallBack Char Error (cleint disconnected while writting ?)");
+		perror("CallBack Char Error (client disconnected while writting ?)");
 		exit(5);
 	}
 	return(0);
@@ -230,10 +232,11 @@ int readn(int sockfd, char *ptr, int taille)
 	while ( reste > 0 )
 	{
 		lu = read(sockfd,ptr,reste);
+		printf("here ?");
 		callback(sockfd,ptr);
 		if (lu < 0 ){
 			printf("erreur");
-			return lu; /*erreur*/
+			return(lu); /*erreur*/
 		} else if ( lu == 0 ){
 			printf("Server is closing the connection\n");
 			close(sockfd);
@@ -243,7 +246,6 @@ int readn(int sockfd, char *ptr, int taille)
 
 		reste -= lu;
 		ptr += lu;
-
 		if ( *(ptr-2) == '\r' && *(ptr-1) == '\n' ){
 			break;
 		}
@@ -252,11 +254,36 @@ int readn(int sockfd, char *ptr, int taille)
 	return (taille-reste);
 }
 int reception(int socket){
- char *buffer = malloc(sizeof(char)*BUFFER_SIZE);
+	printf("in reception : \n");
+	SmtpStatus Status;
+ 	char *buffer;
+ //initialisation de la connexion
  bzero(buffer,BUFFER_SIZE);
- readn(socket,buffer,PACKET_SIZE);
- printf(buffer);
- return 0;
+ Status = DefineReply(0,buffer);
+ printf("REPLY : %s d'un longueur : %d \n",Status.awnser,(int)strlen(Status.awnser));
+
+ writen(socket,Status.awnser,strlen(Status.awnser));
+ readn(socket,buffer,BUFFER_SIZE);
+	printf("BUFFER recu : %s",buffer);
+	Status = DefineReply(Status.statusCode,buffer);
+	 switch(Status.statusCode){
+	 case 221:
+		 exit(0);
+	 case 554:
+		 perror("The Server is not available for awnser Exiting Connection");
+		 exit(122);
+		 break;
+	 default:
+		printf("OK \n");
+		printf(buffer);
+		 break;
+
+
+
+ }
+ //Connection OK 220 envoyé
+// En attente d'un ehlo/helo
+ return(0);
 
 }
 

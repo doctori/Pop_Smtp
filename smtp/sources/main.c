@@ -19,12 +19,10 @@ int socket_smtp = -1;
 
 
 int main (int argc, char *argv[]){
-	char *subject = malloc(sizeof(char)*256);
+
 	//traitement parametres entree
-	char *to = malloc(sizeof(char)*256);
-	char * from = "esgi.prog@laposte.net";
 	int listenPort = 25;
-	int listenfd,connfd,port,pid;
+	int listenfd,connfd,pid;
 	socklen_t len;
 	struct sockaddr_in servaddr,cliaddr;
 	char adresseIP[16];
@@ -43,7 +41,10 @@ servaddr.sin_family=AF_INET;//IPv4
 servaddr.sin_addr.s_addr=htonl(INADDR_ANY);//connexion acceptÃ©e pour toute adresse(adresse de l'hote convertit   en adresse reseau)
 servaddr.sin_port=htons(listenPort);//port sur lequel ecoute le serveur
 
-bind(listenfd,(struct sockaddr *)& servaddr,sizeof(servaddr));//on relie le descripteur à la structure de socket
+if(bind(listenfd,(struct sockaddr *)& servaddr,sizeof(servaddr))<0){//on relie le descripteur à la structure de socket
+	perror("ERROR Binding of Isaac (or the socket maybe ?");
+	exit(7);
+}
 listen(listenfd,10);//convertit la socket en socket passive,attendant les connexions.   10=nombre maximal de clients mis en attente de connexion par le noyau
 len=sizeof(cliaddr);
 for(;;)
@@ -54,7 +55,7 @@ for(;;)
 		perror("ERROR Accepting the Connection (no more connection available ? ");
 		exit(4);
 	}
-	printf("connexion de %s, port %d\n",adresseIP,listenPort);
+	printf("connexion : port %d\n",listenPort);
 	pid=fork();
 	if(pid<0){
 		perror("Cannot create child process to treat the new connexion");
@@ -71,6 +72,5 @@ for(;;)
 
 	close(connfd);
 }
-
-																	return 0;
+return 0;
 }

@@ -3,12 +3,12 @@
  *
  */
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include "smtpReplies.h"
 
-typedef struct{
-	int replyCode;
-	const char* replyText;
-}SmtpReply;
+
+
 
 SmtpReply smtpReplies[] = {
 	{211, "System status\n"},
@@ -29,7 +29,7 @@ SmtpReply smtpReplies[] = {
 	{554, "Transaction failed\n"}
 };
 
-const char* GetSmtpReplyTextByCode(int replyCode)
+char* GetSmtpReplyTextByCode(int replyCode)
 {
 	int i;
 	for(i = 0; i < SMTP_REPLIES_COUNT; i++)
@@ -39,4 +39,39 @@ const char* GetSmtpReplyTextByCode(int replyCode)
 	}
 	
 	return NULL;
+}
+char* ConstructSmtpReply(int replyCode){
+	char* replyString;
+	sprintf(replyString,"%d %s",replyCode,GetSmtpReplyTextByCode(replyCode));
+	return(replyString);
+}
+SmtpStatus DefineReply(int pastStatus,char *clientAwnser){
+	int replyCode=0;
+	//Verifie que l'instruction n'est pas quit
+	printf("Comparaison de %s a QUIT : %d avec l'ancien status : %d",clientAwnser,strcmp("QUIT",clientAwnser),pastStatus);
+	if(strcmp("QUIT",clientAwnser)==0){
+		replyCode=221;
+	}else{
+		switch(pastStatus){
+		// Smtp Initialisaiton
+		case 0 :
+			// Si pas de reposne client (initialisation de la connexion)
+			replyCode=220;
+
+			break;
+		// smtp waiting ehlo
+		case 220 :
+			if(strcmp("EHLO",clientAwnser)==0 || strcmp("HELO",clientAwnser) == 0){
+				replyCode=250;
+			}
+			break;
+		default:
+			replyCode=-1;
+			break;
+		//après avoir défini le replyCode on construit la string
+
+		}
+	}
+	SmtpStatus Status = {replyCode , ConstructSmtpReply(replyCode) };
+	return(Status);
 }
