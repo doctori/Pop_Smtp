@@ -47,9 +47,11 @@ char* ConstructSmtpReply(int replyCode){
 	return(replyString);
 }
 SmtpStatus DefineReply(int pastStatus,char *clientAwnser){
+	size_t startStr;
+	startStr = sizeof(char)*4;
 	int replyCode=0;
 	//Verifie que l'instruction n'est pas quit
-	if(strncmp("QUIT\n\r",clientAwnser,sizeof(char)*4)==0){
+	if(strncmp("QUIT\n\r",clientAwnser,startStr)==0){
 		replyCode=221;
 	}else{
 		switch(pastStatus){
@@ -60,10 +62,24 @@ SmtpStatus DefineReply(int pastStatus,char *clientAwnser){
 			break;
 		// smtp waiting ehlo
 		case 220 :
-			if(strcmp("EHLO",clientAwnser)==0 || strcmp("HELO",clientAwnser) == 0){
+			if(strncmp("EHLO",clientAwnser,startStr)==0 || strncmp("HELO",clientAwnser,startStr) == 0){
 				replyCode=250;
+			}else{
+				replyCode=500;
 			}
 			break;
+		// Smtp Heloed Waiting for MAIL FROM
+		case 250 :
+			if(strncmp("MAIL",clientAwnser,startStr)==0){
+				//The Message Started with MAIL
+				//Check if contains a "FROM" part
+				if(strstr(clientAwnser,"FROM")){
+					//Grabing the content inside the <> (mail FROM)
+				}
+			}else{
+				replyCode=500;
+			}
+		break;
 		default:
 			replyCode=-1;
 			break;
