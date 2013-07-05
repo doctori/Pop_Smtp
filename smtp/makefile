@@ -1,29 +1,25 @@
-BUILD_DIR = Debug
-SRC_DIR =sources
-SRC = $(wildcard $(SRC_DIR)/*.c)
-OBJS = $(pathsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o)
-
-CC=gcc
-CCFLAGS=-W -Wall -g
-REBUILDABLES = $(OBJS) $(TARGET)
+OBJDIR := Debug
+SRCDIR := sources
+CC := gcc
+CCFLAGS := -W -Wall -g
 
 #rules
-all:
-	checkdirs $(BUILD_DIR)/smtp 
+all: $(OBJDIR)/smtp 
 
-%: $(OBJS)
+$(OBJDIR)/smtp: $(OBJDIR)/main.o $(OBJDIR)/server.o $(OBJDIR)/smtpReplies.o
 	$(CC) $(CCFLAGS) $^ -o $@
 
-%.o: %.c
-	$(CC) -o $@ -c $< $(CCFLAGS)
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) -c $(CCFLAGS) $^ -o $@ 
 	
-checkdirs : $(BUILD_DIR)
-$(BUILD_DIR):
-	@mkdir -p $@
+$(OBJDIR):
+	mkdir -p $@
 
 clean:
-	rm -rf $(BUILD_DIR)
-	rm -rf *.o 
+	rm -rf $(OBJDIR)/*.o 
 	echo Clean done
 
-$(eval $(call make-goal,$(BUILD_DIR))))	
+# Dependances
+ $(OBJDIR)/smtp: $(OBJDIR)/main.o $(OBJDIR)/server.o $(OBJDIR)/smtpReplies.o | $(OBJDIR)
+ $(OBJDIR)/main.o: $(OBJDIR)/server.o $(OBJDIR)/smtpReplies.o | $(OBJDIR)
+ $(OBJDIR)/server.o: $(OBJDIR)/smtpReplies.o | $(OBJDIR)
