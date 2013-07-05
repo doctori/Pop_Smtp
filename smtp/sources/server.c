@@ -232,8 +232,6 @@ int readn(int sockfd, char *ptr, int taille)
 	while ( reste > 0 )
 	{
 		lu = read(sockfd,ptr,reste);
-		printf("here ?");
-		callback(sockfd,ptr);
 		if (lu < 0 ){
 			printf("erreur");
 			return(lu); /*erreur*/
@@ -246,6 +244,7 @@ int readn(int sockfd, char *ptr, int taille)
 
 		reste -= lu;
 		ptr += lu;
+		callback(sockfd,ptr);
 		if ( *(ptr-2) == '\r' && *(ptr-1) == '\n' ){
 			break;
 		}
@@ -254,34 +253,35 @@ int readn(int sockfd, char *ptr, int taille)
 	return (taille-reste);
 }
 int reception(int socket){
-	printf("in reception : \n");
 	SmtpStatus Status;
+	int dont_stop=1;
 	Status.statusCode=0;
- 	char *buffer;
+	char *buffer=malloc(sizeof(char)*BUFFER_SIZE);
  //initialisation de la connexion
- bzero(buffer,BUFFER_SIZE);
- Status = DefineReply(Status.statusCode,buffer);
- printf("REPLY : %s d'un longueur : %d \n",Status.awnser,(int)strlen(Status.awnser));
-
- writen(socket,Status.awnser,strlen(Status.awnser));
- readn(socket,buffer,BUFFER_SIZE);
-	printf("BUFFER recu : %s",buffer);
-	Status = DefineReply(Status.statusCode,buffer);
-	 switch(Status.statusCode){
-	 case 221:
-		 exit(0);
-	 case 554:
-		 perror("The Server is not available for awnser Exiting Connection");
-		 exit(122);
+ printf("Status Code is : %d\n And Buffer is %s",Status.statusCode,buffer);
+Status = DefineReply(Status.statusCode,buffer);
+writen(socket,Status.awnser,(int)strlen(Status.awnser)+1);
+while(dont_stop){
+	printf("Current Status Code is : %d",Status.statusCode);
+	 readn(socket,buffer,BUFFER_SIZE);
+		Status = DefineReply(Status.statusCode,buffer);
+		 switch(Status.statusCode){
+		 case 221:
+			 dont_stop = 0;
+			 //We Stop client sent Quit
+			 break;
+		 case 554:
+			 perror("The Server is not available for awnser Exiting Connection");
+			 exit(122);
+			 break;
+		 default:
+			 printf("OK \n");
+			 printf(buffer);
 		 break;
-	 default:
-		printf("OK \n");
-		printf(buffer);
-		 break;
 
-
-
- }
+	}
+	writen(socket,Status.awnser,strlen(Status.awnser));
+}
  //Connection OK 220 envoyé
 // En attente d'un ehlo/helo
  return(0);

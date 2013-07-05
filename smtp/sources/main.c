@@ -67,10 +67,9 @@ for(;;)
 		close(listenfd);
 		reception(connfd);//fonction chargée de travailler avec le client
 		close(connfd);
-		exit(0);
-	}
+		}
 
 	close(connfd);
 }
-return 0;
+return(0);
 }

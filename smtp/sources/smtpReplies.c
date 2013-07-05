@@ -35,29 +35,28 @@ char* GetSmtpReplyTextByCode(int replyCode)
 	for(i = 0; i < SMTP_REPLIES_COUNT; i++)
 	{
 		if (smtpReplies[i].replyCode == replyCode)
-			return smtpReplies[i].replyText;
+			return(smtpReplies[i].replyText);
 	}
 	
 	return NULL;
 }
 char* ConstructSmtpReply(int replyCode){
-	char* replyString;
+	char* replyString=malloc(sizeof(char)*BUFFER_SIZE);
+	memset(replyString,0x00,BUFFER_SIZE);
 	sprintf(replyString,"%d %s",replyCode,GetSmtpReplyTextByCode(replyCode));
 	return(replyString);
 }
 SmtpStatus DefineReply(int pastStatus,char *clientAwnser){
 	int replyCode=0;
 	//Verifie que l'instruction n'est pas quit
-	printf("Comparaison de %s a QUIT : %d avec l'ancien status : %d",clientAwnser,strcmp("QUIT",clientAwnser),pastStatus);
-	if(strcmp("QUIT",clientAwnser)==0){
+	if(strncmp("QUIT\n\r",clientAwnser,sizeof(char)*4)==0){
 		replyCode=221;
 	}else{
 		switch(pastStatus){
 		// Smtp Initialisaiton
 		case 0 :
-			// Si pas de reposne client (initialisation de la connexion)
+			// Si pas de reponse client (initialisation de la connexion)
 			replyCode=220;
-
 			break;
 		// smtp waiting ehlo
 		case 220 :

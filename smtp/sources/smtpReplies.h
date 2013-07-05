@@ -9,7 +9,7 @@ typedef struct SmtpStatus{
 typedef struct SmtpReply{
 	int replyCode;
 	char* replyText;
-}SmtpReply;
+	}SmtpReply;
 char* GetSmtpReplyTextByCode(int replyCode);
 char* ConstructSmtpReply(int replyCode);
 SmtpStatus DefineReply(int smtpStatus,char *clientAwnser);
