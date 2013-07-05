@@ -1,29 +1,29 @@
-makefile:
-all: smtp
+BUILD_DIR = Debug
+SRC_DIR =sources
+SRC = $(wildcard $(SRC_DIR)/*.c)
+OBJS = $(pathsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o)
 
-TARGET = smtp
-
-OBJS = main.o server.o smtpReplies.o
 CC=gcc
-CCFLAGS=-W -Wall
+CCFLAGS=-W -Wall -g
 REBUILDABLES = $(OBJS) $(TARGET)
 
+#rules
+all:
+	checkdirs $(BUILD_DIR)/smtp 
 
-
-
-all : $(TARGET)
-
-
-$(TARGET) : $(OBJS)
-	$(CC) $^ -o $@
+%: $(OBJS)
+	$(CC) $(CCFLAGS) $^ -o $@
 
 %.o: %.c
 	$(CC) -o $@ -c $< $(CCFLAGS)
 	
-clean : 
+checkdirs : $(BUILD_DIR)
+$(BUILD_DIR):
+	@mkdir -p $@
+
+clean:
+	rm -rf $(BUILD_DIR)
 	rm -rf *.o 
 	echo Clean done
-mrproper: 
-	clean
-	rm -rf smtp
-	
+
+$(eval $(call make-goal,$(BUILD_DIR))))	

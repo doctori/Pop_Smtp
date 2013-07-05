@@ -30,12 +30,12 @@ int return_code = -1;
 char * gen_from(char * from){
 	char * new_from; 
 	sprintf(new_from,"MAIL FROM: <%s>\n",from);
-	return new_from;
+	return(new_from);
 }
 char * gen_to(char * to){
 	char * new_to;
 	sprintf(new_to,"RCPT TO: <%s>\n",to);
-	return new_to;
+	return(new_to);
 }
 char * gen_body(char * fichier,char *from,char *to,char *subject){
 	int i,lu,j,current_length = 0;
@@ -256,10 +256,11 @@ int readn(int sockfd, char *ptr, int taille)
 int reception(int socket){
 	printf("in reception : \n");
 	SmtpStatus Status;
+	Status.statusCode=0;
  	char *buffer;
  //initialisation de la connexion
  bzero(buffer,BUFFER_SIZE);
- Status = DefineReply(0,buffer);
+ Status = DefineReply(Status.statusCode,buffer);
  printf("REPLY : %s d'un longueur : %d \n",Status.awnser,(int)strlen(Status.awnser));
 
  writen(socket,Status.awnser,strlen(Status.awnser));
