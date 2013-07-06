@@ -29,6 +29,7 @@ SmtpReply smtpReplies[] = {
 };
 char *SmtpAdressToString(SmtpAddress SmtpAddress){
 	char Address[256];
+	printf("Concatenation de %s@%s",SmtpAddress.user,SmtpAddress.domain);
 	strcat(Address,SmtpAddress.user);
 	strcat(Address,"@");
 	strcat(Address,SmtpAddress.domain);
@@ -124,7 +125,8 @@ SmtpStatus DefineReply(SmtpStatus pastSmtpStatus,char *clientAwnser){
 		//Fin Data
 		case 354:
 			//On pourra ajouter du check de DATA
-			Status.DATA=clientAwnser;
+			printf("Ajout de la data : %s/n",clientAwnser);
+			Status.DATA=buff;
 			replyCode=250;
 			break;
 		default:

@@ -282,14 +282,18 @@ int reception(int socket){
 	int dont_stop=1;
 	Status.statusCode=0;
 	char *buffer=malloc(sizeof(char)*BUFFER_SIZE);
+	Status.DATA=malloc(sizeof(char)*BUFFER_SIZE);
+	memset(Status.DATA,0x00,BUFFER_SIZE);
  //initialisation de la connexion
  printf("Status Code is : %d\n And Buffer is %s",Status.statusCode,buffer);
 Status = DefineReply(Status,buffer);
 writen(socket,Status.awnser,(int)strlen(Status.awnser)+1);
+//communication avec le client tant que pas d'erreur ou pas de QUIT
 while(dont_stop){
 	printf("Current Status Code is : %d",Status.statusCode);
 	 readn(socket,buffer,BUFFER_SIZE);
 		Status = DefineReply(Status,buffer);
+		printf("FROM ! %s\n",Status.FROM.user);
 		 switch(Status.statusCode){
 		 case 221:
 			 dont_stop = 0;
@@ -302,7 +306,7 @@ while(dont_stop){
  			 Status = DefineReply(Status,buffer);
 			 break;
 		 case 500:
-			 perror("Syntax ERROR Closing Connection\n");
+			 printf("Syntax ERROR Closing Connection\n");
 			 exit(121);
 			 break;
 		 case 554:
@@ -315,7 +319,13 @@ while(dont_stop){
 		 break;
 
 	}
+
 	writen(socket,Status.awnser,strlen(Status.awnser));
+	 //Si tous les elements sont OK on peut relayer
+			 if(strlen(Status.DATA)>2){
+				 printf("FROM : %s to %s",Status.FROM.user,Status.TO.user);
+					 printf("DATA a envoyer :%s de %s a %s",Status.DATA,SmtpAdressToString(Status.FROM),SmtpAdressToString(Status.TO));
+			 }
 }
  //Connection OK 220 envoyé
 // En attente d'un ehlo/helo
