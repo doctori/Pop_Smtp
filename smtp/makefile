@@ -1,7 +1,7 @@
 OBJDIR := Debug
 SRCDIR := sources
 CC := gcc
-CCFLAGS := -W -Wall -g
+CCFLAGS := -W -Wall -g -O0
 
 #rules
 all: $(OBJDIR)/smtp 

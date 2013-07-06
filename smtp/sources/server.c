@@ -244,13 +244,38 @@ int readn(int sockfd, char *ptr, int taille)
 
 		reste -= lu;
 		ptr += lu;
-		callback(sockfd,ptr);
-		if ( *(ptr-2) == '\r' && *(ptr-1) == '\n' ){
+	//	callback(sockfd,ptr);
+		if ( *(ptr-2) == '\r' && *(ptr-1) == '\n' )
 			break;
-		}
 	}
 	*ptr = 0x00;
 	return (taille-reste);
+}
+int readData(int sockfd, char *ptr)
+{
+	int reste, lu;
+	int stop = 0;
+	reste = BUFFER_SIZE;
+	while (!stop)
+	{
+		lu = read(sockfd,ptr,reste);
+		if (lu < 0 ){
+			printf("erreur");
+			return(lu); /*erreur*/
+		} else if ( lu == 0 ){
+			printf("Server is closing the connection\n");
+			close(sockfd);
+			exit(-1);
+			break;
+		}
+
+		reste -= lu;
+		ptr += lu;
+		if ( *(ptr-5) == '\r' && *(ptr-4) == '\n' && *(ptr-3) == '.' && *(ptr-2) == '\r' && *(ptr-1) == '\n' )
+			stop=1;
+	}
+	*ptr = 0x00;
+	return (BUFFER_SIZE-reste);
 }
 int reception(int socket){
 	SmtpStatus Status;
@@ -259,16 +284,26 @@ int reception(int socket){
 	char *buffer=malloc(sizeof(char)*BUFFER_SIZE);
  //initialisation de la connexion
  printf("Status Code is : %d\n And Buffer is %s",Status.statusCode,buffer);
-Status = DefineReply(Status.statusCode,buffer);
+Status = DefineReply(Status,buffer);
 writen(socket,Status.awnser,(int)strlen(Status.awnser)+1);
 while(dont_stop){
 	printf("Current Status Code is : %d",Status.statusCode);
 	 readn(socket,buffer,BUFFER_SIZE);
-		Status = DefineReply(Status.statusCode,buffer);
+		Status = DefineReply(Status,buffer);
 		 switch(Status.statusCode){
 		 case 221:
 			 dont_stop = 0;
 			 //We Stop client sent Quit
+			 break;
+		// Recieveing DATA
+		 case 354:
+			writen(socket,Status.awnser,strlen(Status.awnser));
+			 readData(socket,buffer);
+ 			 Status = DefineReply(Status,buffer);
+			 break;
+		 case 500:
+			 perror("Syntax ERROR Closing Connection\n");
+			 exit(121);
 			 break;
 		 case 554:
 			 perror("The Server is not available for awnser Exiting Connection");

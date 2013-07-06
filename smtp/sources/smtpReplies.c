@@ -6,8 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "smtpReplies.h"
-
-
+#define MAX_TOKEN 4
 
 
 SmtpReply smtpReplies[] = {
@@ -28,7 +27,13 @@ SmtpReply smtpReplies[] = {
 	{553, "Requested action not taken: mailbox name not allowed\n"},
 	{554, "Transaction failed\n"}
 };
-
+char *SmtpAdressToString(SmtpAddress SmtpAddress){
+	char Address[256];
+	strcat(Address,SmtpAddress.user);
+	strcat(Address,"@");
+	strcat(Address,SmtpAddress.domain);
+	return(Address);
+}
 char* GetSmtpReplyTextByCode(int replyCode)
 {
 	int i;
@@ -46,15 +51,32 @@ char* ConstructSmtpReply(int replyCode){
 	sprintf(replyString,"%d %s",replyCode,GetSmtpReplyTextByCode(replyCode));
 	return(replyString);
 }
-SmtpStatus DefineReply(int pastStatus,char *clientAwnser){
+SmtpStatus DefineReply(SmtpStatus pastSmtpStatus,char *clientAwnser){
 	size_t startStr;
+	char *buff = clientAwnser;
+	char **pBuff = &buff;
+	char *currentToken = malloc(sizeof(char)*BUFFER_SIZE);
+	char *Token[MAX_TOKEN];
+	SmtpStatus Status =pastSmtpStatus;
+	static char delimiters[] = " :<>@";
+
+
 	startStr = sizeof(char)*4;
-	int replyCode=0;
+	int i=0,replyCode=0;
+	//découpage de la reponse en Token (separation des espace et <>)
+	while ((currentToken = strsep(pBuff,delimiters))){
+		if (strcmp(currentToken, "") && strcmp(currentToken, "from") &&
+					strcmp(currentToken, "to"))
+				{
+					Token[i] = currentToken;
+					i++;
+				}
+	}
 	//Verifie que l'instruction n'est pas quit
 	if(strncmp("QUIT\n\r",clientAwnser,startStr)==0){
 		replyCode=221;
 	}else{
-		switch(pastStatus){
+		switch(pastSmtpStatus.statusCode){
 		// Smtp Initialisaiton
 		case 0 :
 			// Si pas de reponse client (initialisation de la connexion)
@@ -70,16 +92,41 @@ SmtpStatus DefineReply(int pastStatus,char *clientAwnser){
 			break;
 		// Smtp Heloed Waiting for MAIL FROM
 		case 250 :
-			if(strncmp("MAIL",clientAwnser,startStr)==0){
+			if(strncmp("MAIL",Token[0],startStr)==0){
 				//The Message Started with MAIL
 				//Check if contains a "FROM" part
-				if(strstr(clientAwnser,"FROM")){
-					//Grabing the content inside the <> (mail FROM)
-				}
+				printf("\nFROM ? : %s@%s \n",Token[2],Token[3]);
+				//On alimente Le status avec l'adresse source
+				Status.FROM.user=Token[2];
+				Status.FROM.domain=Token[3];
+				replyCode=250;
+			}else if(strncmp("RCPT",Token[0],startStr)==0){
+				printf("\n TO ? : %s@%s \n",Token[2],Token[3]);
+				replyCode=250;
+				// On alimente le status avec laddresse de dest.
+				Status.TO.user=Token[2];
+				Status.TO.domain=Token[3];
+			}else if(strncmp("RSET",Token[0],startStr)==0){
+				//Reset Received
+				printf("\n RESET !");
+				Status.FROM.domain='\0';
+				Status.FROM.user='\0';
+				Status.TO.domain='\0';
+				Status.TO.user='\0';
+				replyCode=250;
+			}else if(strncmp("DATA",Token[0],startStr)==0){
+				printf("\n DATA !");
+				replyCode=354;
 			}else{
 				replyCode=500;
 			}
 		break;
+		//Fin Data
+		case 354:
+			//On pourra ajouter du check de DATA
+			Status.DATA=clientAwnser;
+			replyCode=250;
+			break;
 		default:
 			replyCode=-1;
 			break;
@@ -87,6 +134,7 @@ SmtpStatus DefineReply(int pastStatus,char *clientAwnser){
 
 		}
 	}
-	SmtpStatus Status = {replyCode , ConstructSmtpReply(replyCode) };
+	Status.statusCode= replyCode;
+	Status.awnser=ConstructSmtpReply(replyCode);
 	return(Status);
 }
