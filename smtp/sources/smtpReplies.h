@@ -21,6 +21,8 @@ typedef struct SmtpReply{
 	}SmtpReply;
 char* GetSmtpReplyTextByCode(int replyCode);
 char* ConstructSmtpReply(int replyCode);
-SmtpStatus DefineReply(SmtpStatus oldSmtpStatus,char *clientAwnser);
+void DefineReply(SmtpStatus *Status,char *clientAwnser);
+SmtpStatus SmtpStatusClone(SmtpStatus SmtpStatusSource);
+SmtpAddress SmtpAddressClone(SmtpAddress SmtpAddressSource);
 char * SmtpAdressToString(SmtpAddress Adress);
 #endif

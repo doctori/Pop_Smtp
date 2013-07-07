@@ -35,6 +35,22 @@ char *SmtpAdressToString(SmtpAddress SmtpAddress){
 	strcat(Address,SmtpAddress.domain);
 	return(Address);
 }
+SmtpAddress SmtpAddressClone(SmtpAddress SmtpAddressSource){
+	SmtpAddress SmtpAddressDest;
+	SmtpAddressDest.user = SmtpAddressSource.user;
+	SmtpAddressDest.domain=SmtpAddressSource.domain;
+	return(SmtpAddressDest);
+}
+SmtpStatus SmtpStatusClone(SmtpStatus SmtpStatusSource){
+	SmtpStatus SmtpStatusDest;
+	SmtpStatusDest.DATA=SmtpStatusSource.DATA;
+	SmtpStatusDest.awnser = SmtpStatusSource.awnser;
+	SmtpStatusDest.statusCode = SmtpStatusSource.statusCode;
+	SmtpStatusDest.FROM=SmtpAddressClone(SmtpStatusSource.FROM);
+	SmtpStatusDest.TO=SmtpAddressClone(SmtpStatusSource.TO);
+	return(SmtpStatusDest);
+
+}
 char* GetSmtpReplyTextByCode(int replyCode)
 {
 	int i;
@@ -52,32 +68,35 @@ char* ConstructSmtpReply(int replyCode){
 	sprintf(replyString,"%d %s",replyCode,GetSmtpReplyTextByCode(replyCode));
 	return(replyString);
 }
-SmtpStatus DefineReply(SmtpStatus pastSmtpStatus,char *clientAwnser){
+void DefineReply(SmtpStatus *Status,char *clientAwnser){
 	size_t startStr;
-	char *buff = clientAwnser;
+	char *buff = malloc(sizeof(char)*BUFFER_SIZE);
+	strcpy(buff,clientAwnser);
 	char **pBuff = &buff;
 	char *currentToken = malloc(sizeof(char)*BUFFER_SIZE);
 	char *Token[MAX_TOKEN];
-	SmtpStatus Status =pastSmtpStatus;
+
 	static char delimiters[] = " :<>@";
 
 
 	startStr = sizeof(char)*4;
 	int i=0,replyCode=0;
 	//découpage de la reponse en Token (separation des espace et <>)
-	while ((currentToken = strsep(pBuff,delimiters))){
-		if (strcmp(currentToken, "") && strcmp(currentToken, "from") &&
-					strcmp(currentToken, "to"))
-				{
-					Token[i] = currentToken;
-					i++;
-				}
+	if((*Status).statusCode!=354){
+		while ((currentToken = strsep(pBuff,delimiters))){
+			if (strcmp(currentToken, "") && strcmp(currentToken, "from") &&
+						strcmp(currentToken, "to"))
+					{
+						Token[i] = currentToken;
+						i++;
+					}
+		}
 	}
 	//Verifie que l'instruction n'est pas quit
 	if(strncmp("QUIT\n\r",clientAwnser,startStr)==0){
 		replyCode=221;
 	}else{
-		switch(pastSmtpStatus.statusCode){
+		switch((*Status).statusCode){
 		// Smtp Initialisaiton
 		case 0 :
 			// Si pas de reponse client (initialisation de la connexion)
@@ -98,22 +117,22 @@ SmtpStatus DefineReply(SmtpStatus pastSmtpStatus,char *clientAwnser){
 				//Check if contains a "FROM" part
 				printf("\nFROM ? : %s@%s \n",Token[2],Token[3]);
 				//On alimente Le status avec l'adresse source
-				Status.FROM.user=Token[2];
-				Status.FROM.domain=Token[3];
+				(*Status).FROM.user=strdup(Token[2]);
+				(*Status).FROM.domain=strdup(Token[3]);
 				replyCode=250;
 			}else if(strncmp("RCPT",Token[0],startStr)==0){
 				printf("\n TO ? : %s@%s \n",Token[2],Token[3]);
 				replyCode=250;
 				// On alimente le status avec laddresse de dest.
-				Status.TO.user=Token[2];
-				Status.TO.domain=Token[3];
+				(*Status).TO.user=strdup(Token[2]);
+				(*Status).TO.domain=strdup(Token[3]);
 			}else if(strncmp("RSET",Token[0],startStr)==0){
 				//Reset Received
 				printf("\n RESET !");
-				Status.FROM.domain='\0';
-				Status.FROM.user='\0';
-				Status.TO.domain='\0';
-				Status.TO.user='\0';
+				memset((*Status).FROM.domain,0x00,strlen((*Status).FROM.domain));
+				memset((*Status).FROM.user,0x00,strlen((*Status).FROM.user));
+				memset((*Status).TO.domain,0x00,strlen((*Status).TO.domain));
+				memset((*Status).TO.user,0x00,strlen((*Status).TO.user));
 				replyCode=250;
 			}else if(strncmp("DATA",Token[0],startStr)==0){
 				printf("\n DATA !");
@@ -126,7 +145,7 @@ SmtpStatus DefineReply(SmtpStatus pastSmtpStatus,char *clientAwnser){
 		case 354:
 			//On pourra ajouter du check de DATA
 			printf("Ajout de la data : %s/n",clientAwnser);
-			Status.DATA=buff;
+			memmove((*Status).DATA,buff,strlen(buff));
 			replyCode=250;
 			break;
 		default:
@@ -136,7 +155,7 @@ SmtpStatus DefineReply(SmtpStatus pastSmtpStatus,char *clientAwnser){
 
 		}
 	}
-	Status.statusCode= replyCode;
-	Status.awnser=ConstructSmtpReply(replyCode);
-	return(Status);
+	(*Status).statusCode= replyCode;
+	(*Status).awnser=ConstructSmtpReply(replyCode);
+
 }

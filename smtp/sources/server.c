@@ -286,14 +286,14 @@ int reception(int socket){
 	memset(Status.DATA,0x00,BUFFER_SIZE);
  //initialisation de la connexion
  printf("Status Code is : %d\n And Buffer is %s",Status.statusCode,buffer);
-Status = DefineReply(Status,buffer);
+DefineReply(&Status,buffer);
 writen(socket,Status.awnser,(int)strlen(Status.awnser)+1);
 //communication avec le client tant que pas d'erreur ou pas de QUIT
 while(dont_stop){
 	printf("Current Status Code is : %d",Status.statusCode);
 	 readn(socket,buffer,BUFFER_SIZE);
-		Status = DefineReply(Status,buffer);
-		printf("FROM ! %s\n",Status.FROM.user);
+		DefineReply(&Status,buffer);
+		printf("FROM ! %s@%s\n",Status.FROM.user,Status.FROM.domain);
 		 switch(Status.statusCode){
 		 case 221:
 			 dont_stop = 0;
@@ -303,7 +303,7 @@ while(dont_stop){
 		 case 354:
 			writen(socket,Status.awnser,strlen(Status.awnser));
 			 readData(socket,buffer);
- 			 Status = DefineReply(Status,buffer);
+ 			 DefineReply(&Status,buffer);
 			 break;
 		 case 500:
 			 printf("Syntax ERROR Closing Connection\n");
