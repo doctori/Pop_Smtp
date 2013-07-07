@@ -18,8 +18,9 @@ int readn(int sockfd, char *ptr, int taille);
 char *gen_from(char *from);
 char *gen_to(char *to);
 char *gen_body(char *fichier,char *from,char *to,char *subject);
-int reception(int socket);
-int envoi (int socket_smtp,char *from,char *to,char *subject);
+int connectToSmtpRelay();
+SmtpStatus reception(int socket);
+int envoi (SmtpStatus StatusToSend);
 int callback(int sockfd,char *char_received);
 
 #endif /* SERVER_H_ */

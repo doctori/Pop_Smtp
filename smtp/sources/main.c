@@ -25,7 +25,6 @@ int main (int argc, char *argv[]){
 	int listenfd,connfd,pid;
 	socklen_t len;
 	struct sockaddr_in servaddr,cliaddr;
-	char adresseIP[16];
 	struct sigaction;
 //On ignore (SIG_IGN) le signal que chaque fils qui se termine envoie Ã  son pÃ¨re (SIGCHLD)
 //Ainsi, les fils ne passent pas par l'Etat zombie
@@ -65,7 +64,11 @@ for(;;)
 	{
 		/* Inside client process */
 		close(listenfd);
-		reception(connfd);//fonction chargée de travailler avec le client
+
+		SmtpStatus Status = reception(connfd);//fonction chargée de travailler avec le client
+		//Envoi du message au prochian relai
+		envoi(Status);
+
 		close(connfd);
 		}
 

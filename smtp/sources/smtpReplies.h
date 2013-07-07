@@ -1,6 +1,7 @@
 #ifndef SMTP_REPLIES
 #define SMTP_REPLIES
 #define BUFFER_SIZE 2048
+#define ADR_SIZE 256
 #define SMTP_REPLIES_COUNT 16
 typedef struct SmtpAddress{
 	char* user;
@@ -14,15 +15,21 @@ typedef struct SmtpStatus{
 	char *DATA;
 }SmtpStatus;
 
+typedef enum {
+        TRUE  = (1==1),
+        FALSE = (1==0),
+} bool_t;
+
 typedef struct SmtpReply{
 	int replyCode;
 	char* replyText;
 
 	}SmtpReply;
+bool_t isAddress(SmtpAddress SmtpAddress);
 char* GetSmtpReplyTextByCode(int replyCode);
 char* ConstructSmtpReply(int replyCode);
 void DefineReply(SmtpStatus *Status,char *clientAwnser);
 SmtpStatus SmtpStatusClone(SmtpStatus SmtpStatusSource);
 SmtpAddress SmtpAddressClone(SmtpAddress SmtpAddressSource);
-char * SmtpAdressToString(SmtpAddress Adress);
+void SmtpAdressToString(char* buff,SmtpAddress Adress);
 #endif

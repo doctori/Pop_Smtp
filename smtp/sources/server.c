@@ -14,7 +14,7 @@
 #include <time.h>
 #include "server.h"
 #include "smtpReplies.h"
-
+#define MAX_ERROR 5;
 
 
 int port = 587;
@@ -28,12 +28,12 @@ char * text = "message.txt";
 char quit[] = "QUIT\n";
 int return_code = -1;
 char * gen_from(char * from){
-	char * new_from; 
+	char * new_from =malloc(sizeof(char)*512);
 	sprintf(new_from,"MAIL FROM: <%s>\n",from);
 	return(new_from);
 }
 char * gen_to(char * to){
-	char * new_to;
+	char * new_to=malloc(sizeof(char)*512);
 	sprintf(new_to,"RCPT TO: <%s>\n",to);
 	return(new_to);
 }
@@ -104,13 +104,52 @@ char * gen_body(char * fichier,char *from,char *to,char *subject){
 	}
 
 	body_ended=strcat(new_body,"\r\n.\r\n");
-	return body_ended;
+	return(body_ended);
 }
-int envoi (int socket_smtp,char *from,char *to,char *subject){
+int connectToSmtpRelay(){
+	int socket_smtp = -1;
+		char server_name[] = "smtp.laposte.net";  // nom du serveur SMTP pour faire le relay
+		int port_smtp_relay = 587;
 
+		// Addresse de la socket
+		struct sockaddr_in socketServerAddr;
+		// Description du host serveur
+		struct hostent *serverEntity;
+
+
+		socket_smtp = socket(AF_INET,SOCK_STREAM,0);
+		if(socket_smtp<0){
+			perror("ERROR opening Socket");
+			exit(1);
+		}
+		// Convertion de l'adresse ip
+		serverEntity = gethostbyname(server_name);
+		   if (serverEntity == NULL) {
+		        fprintf(stderr,"ERROR, no such host\n");
+		        exit(0);
+		    }
+			// Initialisation de l'adresse du socket serveur a zero
+			bzero((void *)&socketServerAddr,sizeof(socketServerAddr));
+			socketServerAddr.sin_family = AF_INET;
+			bcopy((void *)serverEntity->h_addr,(void *)&socketServerAddr.sin_addr,serverEntity->h_length);
+		// Htons pour utiliser l'endian du reseau (host to network)
+		socketServerAddr.sin_port = htons(port_smtp_relay);
+		// Adresse IPv4
+
+		// Creation de la socket en TCP SOCK_STREAM
+
+		// Connexion du socket
+		if(connect(socket_smtp,(struct sockaddr *)&socketServerAddr, sizeof(socketServerAddr)) == SOCKET_ERROR){
+			perror("Connect ERROR");
+			exit(2);
+		}
+		return(socket_smtp);
+}
+int envoi (SmtpStatus StatusToSend){
+//On ouvre un socket vers le relai smtp
+	int socket_smtp=connectToSmtpRelay();
 	char buf[PACKET_SIZE+1];
-	buf[0]= 0x00;
-	
+			buf[0]= 0x00;
 	/* RFC 
 	 * Connexion reponse serveur : 220 ....
 	 * HELO réponse serveur : 250 You are ...
@@ -122,7 +161,11 @@ int envoi (int socket_smtp,char *from,char *to,char *subject){
 	 * Le message finissant par "." (-> 250 ok 1371479777 qp 11841
 	 * QUIT -> 221
 	 */
-	
+	//on construit nos string pour TO et FROM
+	char * FROM = malloc(sizeof(char)*ADR_SIZE);
+	SmtpAdressToString(FROM,StatusToSend.FROM);
+	char * TO = malloc(sizeof(char)*ADR_SIZE);
+	SmtpAdressToString(TO,StatusToSend.TO);
 	readn(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	
@@ -142,12 +185,12 @@ int envoi (int socket_smtp,char *from,char *to,char *subject){
 	printf(buf);
 	
 	//Champ FROM
-	writen(socket_smtp,gen_from(from),strlen(gen_from(from)));
+	writen(socket_smtp,gen_from(FROM),strlen(gen_from(FROM)));
 	readn(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	
 	//Champ TO
-	writen(socket_smtp,gen_to(to),strlen(gen_to(to)));
+	writen(socket_smtp,gen_to(TO),strlen(gen_to(TO)));
 	readn(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	//vidage du buffer :
@@ -159,7 +202,7 @@ int envoi (int socket_smtp,char *from,char *to,char *subject){
 	strncpy(buf,"",sizeof(buf));
 	//printf("AFTER %s \n",gen_body(text));
 	//ICI ca bloque
-	writen(socket_smtp,gen_body(text,from,to,subject),strlen(gen_body(text,from,to,subject)));
+	writen(socket_smtp,StatusToSend.DATA,strlen(StatusToSend.DATA));
 	read(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	
@@ -169,6 +212,9 @@ int envoi (int socket_smtp,char *from,char *to,char *subject){
 	printf(buf);
 
 	return_code = 0;
+	//fermeture avant retour de la fonction
+	shutdown(socket_smtp,2);
+	close(socket_smtp);
 	return(return_code);
 }
 
@@ -277,23 +323,34 @@ int readData(int sockfd, char *ptr)
 	*ptr = 0x00;
 	return (BUFFER_SIZE-reste);
 }
-int reception(int socket){
+SmtpStatus reception(int socket){
 	SmtpStatus Status;
-	int dont_stop=1;
+	int dont_stop=1,error_count=0,former_statusCode=0;
 	Status.statusCode=0;
 	char *buffer=malloc(sizeof(char)*BUFFER_SIZE);
 	Status.DATA=malloc(sizeof(char)*BUFFER_SIZE);
+	Status.FROM.user=malloc(sizeof(char)*ADR_SIZE);
+	Status.FROM.domain=malloc(sizeof(char)*ADR_SIZE);
+	Status.TO.user=malloc(sizeof(char)*ADR_SIZE);
+	Status.TO.domain=malloc(sizeof(char)*ADR_SIZE);
+	memset(buffer,0x00,BUFFER_SIZE);
 	memset(Status.DATA,0x00,BUFFER_SIZE);
+	memset(Status.FROM.user,0x00,ADR_SIZE);
+	memset(Status.FROM.domain,0x00,ADR_SIZE);
+	memset(Status.TO.user,0x00,ADR_SIZE);
+	memset(Status.TO.domain,0x00,ADR_SIZE);
  //initialisation de la connexion
- printf("Status Code is : %d\n And Buffer is %s",Status.statusCode,buffer);
+ printf("Status Code is : %d\nAnd Buffer is %s",Status.statusCode,buffer);
 DefineReply(&Status,buffer);
-writen(socket,Status.awnser,(int)strlen(Status.awnser)+1);
+writen(socket,Status.awnser,(int)strlen(Status.awnser));
 //communication avec le client tant que pas d'erreur ou pas de QUIT
 while(dont_stop){
-	printf("Current Status Code is : %d",Status.statusCode);
-	 readn(socket,buffer,BUFFER_SIZE);
+	printf("Current Status Code is : %d \n",Status.statusCode);
+	former_statusCode=Status.statusCode;
+	readn(socket,buffer,BUFFER_SIZE);
 		DefineReply(&Status,buffer);
-		printf("FROM ! %s@%s\n",Status.FROM.user,Status.FROM.domain);
+		if(strlen(Status.FROM.user)>2)
+			printf("FROM ! %s@%s\n",Status.FROM.user,Status.FROM.domain);
 		 switch(Status.statusCode){
 		 case 221:
 			 dont_stop = 0;
@@ -306,8 +363,13 @@ while(dont_stop){
  			 DefineReply(&Status,buffer);
 			 break;
 		 case 500:
-			 printf("Syntax ERROR Closing Connection\n");
-			 exit(121);
+			 error_count ++;
+			 if(error_count > 5){
+				 printf("Syntax ERROR Closing Connection\n");
+				 exit(121);
+			 }else{
+				 Status.statusCode = former_statusCode;
+			 }
 			 break;
 		 case 554:
 			 perror("The Server is not available for awnser Exiting Connection");
@@ -322,14 +384,13 @@ while(dont_stop){
 
 	writen(socket,Status.awnser,strlen(Status.awnser));
 	 //Si tous les elements sont OK on peut relayer
-			 if(strlen(Status.DATA)>2){
+			 if(strlen(Status.DATA)>2 && isAddress(Status.TO) && isAddress(Status.FROM)){
 				 printf("FROM : %s to %s",Status.FROM.user,Status.TO.user);
-					 printf("DATA a envoyer :%s de %s a %s",Status.DATA,SmtpAdressToString(Status.FROM),SmtpAdressToString(Status.TO));
+					  //On envoi sur notre smtp authentifié
 			 }
+			 memset(buffer,0x00,BUFFER_SIZE);
 }
- //Connection OK 220 envoyé
-// En attente d'un ehlo/helo
- return(0);
+ return(Status);
 
 }
 

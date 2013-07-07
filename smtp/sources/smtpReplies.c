@@ -10,11 +10,15 @@
 
 
 SmtpReply smtpReplies[] = {
-	{211, "System status\n"},
-	{214, "Help message\n"},
-	{220, "Service ready\n"},
+	{211, "System status\r\n"},
+	{214, "Help message\r\n"},
+	{220, "Service ready\r\n"},
 	{221, "Service closing transmission channel\n"},
-	{250, "Requested mail action okay, completed\n"},
+	{250, "OK\n"},
+	//Status factice pour contruire le greetings avec les capacités
+	{1, "mail.dugrandGourou.fr"},
+	{2,"SIZE 2048"},
+	{3,"8BITMIME"},
 	{354, "Start mail input; end with <CRLF>.<CRLF>\n"},
 	{421, "Service not available, closing transmission channel\n"},
 	{450, "Requested mail action not taken: mailbox unavailable\n"},
@@ -27,14 +31,20 @@ SmtpReply smtpReplies[] = {
 	{553, "Requested action not taken: mailbox name not allowed\n"},
 	{554, "Transaction failed\n"}
 };
-char *SmtpAdressToString(SmtpAddress SmtpAddress){
-	char Address[256];
+bool_t isAddress(SmtpAddress SmtpAddress){
+	bool_t isAddress = FALSE;
+	if(strlen(SmtpAddress.domain)>2 && strlen(SmtpAddress.user)>2)
+		isAddress = TRUE;
+	return(isAddress);
+}
+void SmtpAdressToString(char *Address,SmtpAddress SmtpAddress){
 	printf("Concatenation de %s@%s",SmtpAddress.user,SmtpAddress.domain);
 	strcat(Address,SmtpAddress.user);
 	strcat(Address,"@");
 	strcat(Address,SmtpAddress.domain);
-	return(Address);
+
 }
+
 SmtpAddress SmtpAddressClone(SmtpAddress SmtpAddressSource){
 	SmtpAddress SmtpAddressDest;
 	SmtpAddressDest.user = SmtpAddressSource.user;
@@ -63,10 +73,9 @@ char* GetSmtpReplyTextByCode(int replyCode)
 	return NULL;
 }
 char* ConstructSmtpReply(int replyCode){
-	char* replyString=malloc(sizeof(char)*BUFFER_SIZE);
-	memset(replyString,0x00,BUFFER_SIZE);
-	sprintf(replyString,"%d %s",replyCode,GetSmtpReplyTextByCode(replyCode));
-	return(replyString);
+	char* replyString = malloc(sizeof(char)*BUFFER_SIZE);
+		sprintf(replyString,"%d %s",replyCode,GetSmtpReplyTextByCode(replyCode));
+		return(replyString);
 }
 void DefineReply(SmtpStatus *Status,char *clientAwnser){
 	size_t startStr;
@@ -102,9 +111,9 @@ void DefineReply(SmtpStatus *Status,char *clientAwnser){
 			// Si pas de reponse client (initialisation de la connexion)
 			replyCode=220;
 			break;
-		// smtp waiting ehlo
-		case 220 :
-			if(strncmp("EHLO",clientAwnser,startStr)==0 || strncmp("HELO",clientAwnser,startStr) == 0){
+		// smtp waiting hElo
+		case 220:
+			if( strncmp("HELO",clientAwnser,startStr) == 0){
 				replyCode=250;
 			}else{
 				replyCode=500;
@@ -149,13 +158,16 @@ void DefineReply(SmtpStatus *Status,char *clientAwnser){
 			replyCode=250;
 			break;
 		default:
-			replyCode=-1;
+			replyCode=220;
 			break;
 		//après avoir défini le replyCode on construit la string
 
 		}
 	}
-	(*Status).statusCode= replyCode;
+	if(replyCode != 222)
+		(*Status).statusCode= replyCode;
+	else
+		(*Status).statusCode= 250;
 	(*Status).awnser=ConstructSmtpReply(replyCode);
 
 }
