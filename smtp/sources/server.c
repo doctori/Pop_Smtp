@@ -145,9 +145,10 @@ int connectToSmtpRelay(){
 		}
 		return(socket_smtp);
 }
-int envoi (SmtpStatus StatusToSend){
+int envoi (SmtpStatus *StatusToSend){
 //On ouvre un socket vers le relai smtp
 	int socket_smtp=connectToSmtpRelay();
+	int i=0;
 	char buf[PACKET_SIZE+1];
 			buf[0]= 0x00;
 	/* RFC 
@@ -163,9 +164,9 @@ int envoi (SmtpStatus StatusToSend){
 	 */
 	//on construit nos string pour TO et FROM
 	char * FROM = malloc(sizeof(char)*ADR_SIZE);
-	SmtpAdressToString(FROM,StatusToSend.FROM);
+	SmtpAdressToString(FROM,StatusToSend->FROM);
 	char * TO = malloc(sizeof(char)*ADR_SIZE);
-	SmtpAdressToString(TO,StatusToSend.TO);
+
 	readn(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	
@@ -190,9 +191,16 @@ int envoi (SmtpStatus StatusToSend){
 	printf(buf);
 	
 	//Champ TO
-	writen(socket_smtp,gen_to(TO),strlen(gen_to(TO)));
-	readn(socket_smtp,buf,PACKET_SIZE);
-	printf(buf);
+	//On parcours tous les TO
+	while(isAddress(StatusToSend->TO[i])){
+		SmtpAdressToString(TO,StatusToSend->TO[i]);
+		writen(socket_smtp,gen_to(TO),strlen(gen_to(TO)));
+		readn(socket_smtp,buf,PACKET_SIZE);
+		printf(buf);
+
+	}
+
+
 	//vidage du buffer :
 	strncpy(buf,"",sizeof(buf));
 	//Champ DATA
@@ -202,7 +210,7 @@ int envoi (SmtpStatus StatusToSend){
 	strncpy(buf,"",sizeof(buf));
 	//printf("AFTER %s \n",gen_body(text));
 	//ICI ca bloque
-	writen(socket_smtp,StatusToSend.DATA,strlen(StatusToSend.DATA));
+	writen(socket_smtp,StatusToSend->DATA,strlen(StatusToSend->DATA));
 	read(socket_smtp,buf,PACKET_SIZE);
 	printf(buf);
 	
@@ -323,44 +331,34 @@ int readData(int sockfd, char *ptr)
 	*ptr = 0x00;
 	return (BUFFER_SIZE-reste);
 }
-SmtpStatus reception(int socket){
-	SmtpStatus Status;
+SmtpStatus* reception(int socket){
+	SmtpStatus *Status = NewSmtpStatus();
 	int dont_stop=1,error_count=0,former_statusCode=0;
-	Status.statusCode=0;
 	char *buffer=malloc(sizeof(char)*BUFFER_SIZE);
-	Status.DATA=malloc(sizeof(char)*BUFFER_SIZE);
-	Status.FROM.user=malloc(sizeof(char)*ADR_SIZE);
-	Status.FROM.domain=malloc(sizeof(char)*ADR_SIZE);
-	Status.TO.user=malloc(sizeof(char)*ADR_SIZE);
-	Status.TO.domain=malloc(sizeof(char)*ADR_SIZE);
 	memset(buffer,0x00,BUFFER_SIZE);
-	memset(Status.DATA,0x00,BUFFER_SIZE);
-	memset(Status.FROM.user,0x00,ADR_SIZE);
-	memset(Status.FROM.domain,0x00,ADR_SIZE);
-	memset(Status.TO.user,0x00,ADR_SIZE);
-	memset(Status.TO.domain,0x00,ADR_SIZE);
+
  //initialisation de la connexion
- printf("Status Code is : %d\nAnd Buffer is %s",Status.statusCode,buffer);
-DefineReply(&Status,buffer);
-writen(socket,Status.awnser,(int)strlen(Status.awnser));
+ printf("Status Code is : %d\nAnd Buffer is %s \n",Status->statusCode,buffer);
+DefineReply(Status,buffer);
+writen(socket,Status->awnser,(int)strlen(Status->awnser));
 //communication avec le client tant que pas d'erreur ou pas de QUIT
 while(dont_stop){
-	printf("Current Status Code is : %d \n",Status.statusCode);
-	former_statusCode=Status.statusCode;
+	printf("Current Status Code is : %d \n",Status->statusCode);
+	former_statusCode=Status->statusCode;
 	readn(socket,buffer,BUFFER_SIZE);
-		DefineReply(&Status,buffer);
-		if(strlen(Status.FROM.user)>2)
-			printf("FROM ! %s@%s\n",Status.FROM.user,Status.FROM.domain);
-		 switch(Status.statusCode){
+		DefineReply(Status,buffer);
+		if(isAddress(Status->FROM))
+			printf("FROM ! %s@%s\n",Status->FROM->user,Status->FROM->domain);
+		 switch(Status->statusCode){
 		 case 221:
 			 dont_stop = 0;
 			 //We Stop client sent Quit
 			 break;
 		// Recieveing DATA
 		 case 354:
-			writen(socket,Status.awnser,strlen(Status.awnser));
+			writen(socket,Status->awnser,strlen(Status->awnser));
 			 readData(socket,buffer);
- 			 DefineReply(&Status,buffer);
+ 			 DefineReply(Status,buffer);
 			 break;
 		 case 500:
 			 error_count ++;
@@ -368,7 +366,7 @@ while(dont_stop){
 				 printf("Syntax ERROR Closing Connection\n");
 				 exit(121);
 			 }else{
-				 Status.statusCode = former_statusCode;
+				 Status->statusCode = former_statusCode;
 			 }
 			 break;
 		 case 554:
@@ -382,10 +380,10 @@ while(dont_stop){
 
 	}
 
-	writen(socket,Status.awnser,strlen(Status.awnser));
+	writen(socket,Status->awnser,strlen(Status->awnser));
 	 //Si tous les elements sont OK on peut relayer
-			 if(strlen(Status.DATA)>2 && isAddress(Status.TO) && isAddress(Status.FROM)){
-				 printf("FROM : %s to %s",Status.FROM.user,Status.TO.user);
+			 if(strlen(Status->DATA)>2 && isAddress(Status->TO[0]) && isAddress(Status->FROM)){
+				 printf("FROM : %s to %s",Status->FROM->user,Status->TO[0]->user);
 					  //On envoi sur notre smtp authentifié
 			 }
 			 memset(buffer,0x00,BUFFER_SIZE);

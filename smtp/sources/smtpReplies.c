@@ -31,34 +31,64 @@ SmtpReply smtpReplies[] = {
 	{553, "Requested action not taken: mailbox name not allowed\n"},
 	{554, "Transaction failed\n"}
 };
-bool_t isAddress(SmtpAddress SmtpAddress){
+bool_t isAddress(SmtpAddress* SmtpAddress){
 	bool_t isAddress = FALSE;
-	if(strlen(SmtpAddress.domain)>2 && strlen(SmtpAddress.user)>2)
+	if(strlen(SmtpAddress->domain)>2 && strlen(SmtpAddress->user)>2)
 		isAddress = TRUE;
 	return(isAddress);
 }
-void SmtpAdressToString(char *Address,SmtpAddress SmtpAddress){
-	printf("Concatenation de %s@%s",SmtpAddress.user,SmtpAddress.domain);
-	strcat(Address,SmtpAddress.user);
+
+void SmtpAdressToString(char *Address,SmtpAddress* SmtpAddress){
+	printf("Concatenation de %s@%s",SmtpAddress->user,SmtpAddress->domain);
+	strcat(Address,SmtpAddress->user);
 	strcat(Address,"@");
-	strcat(Address,SmtpAddress.domain);
+	strcat(Address,SmtpAddress->domain);
 
 }
 
-SmtpAddress SmtpAddressClone(SmtpAddress SmtpAddressSource){
-	SmtpAddress SmtpAddressDest;
-	SmtpAddressDest.user = SmtpAddressSource.user;
-	SmtpAddressDest.domain=SmtpAddressSource.domain;
+SmtpAddress* SmtpAddressClone(SmtpAddress* SmtpAddressSource){
+	SmtpAddress* SmtpAddressDest;
+	SmtpAddressDest->user = SmtpAddressSource->user;
+	SmtpAddressDest->domain=SmtpAddressSource->domain;
 	return(SmtpAddressDest);
 }
-SmtpStatus SmtpStatusClone(SmtpStatus SmtpStatusSource){
-	SmtpStatus SmtpStatusDest;
-	SmtpStatusDest.DATA=SmtpStatusSource.DATA;
-	SmtpStatusDest.awnser = SmtpStatusSource.awnser;
-	SmtpStatusDest.statusCode = SmtpStatusSource.statusCode;
-	SmtpStatusDest.FROM=SmtpAddressClone(SmtpStatusSource.FROM);
-	SmtpStatusDest.TO=SmtpAddressClone(SmtpStatusSource.TO);
-	return(SmtpStatusDest);
+SmtpStatus* NewSmtpStatus(void){
+	SmtpStatus *NewSmtpStatus;
+	if(NewSmtpStatus){
+		(*NewSmtpStatus).DATA=NULL;
+		memset(NewSmtpStatus->DATA,0x00,sizeof(char)*BUFFER_SIZE);
+		NewSmtpStatus->FROM=NewSmtpAddress();
+		NewSmtpStatus->statusCode=0;
+	}
+	return(NewSmtpStatus);
+}
+SmtpAddress* NewSmtpAddress(void){
+	SmtpAddress* NewSmtpAddress;
+	NewSmtpAddress->domain=malloc(sizeof(char)*ADR_SIZE);
+	NewSmtpAddress->user=malloc(sizeof(char)*ADR_SIZE);
+	memset(NewSmtpAddress->domain,0x00,sizeof(char)*ADR_SIZE);
+	memset(NewSmtpAddress->user,0x00,sizeof(char)*ADR_SIZE);
+	return(NewSmtpAddress);
+}
+void SmtpStatusReset(SmtpStatus *SmtpStatusToReset){
+	int i=0;
+	memset(SmtpStatusToReset->FROM->domain,0x00,strlen(SmtpStatusToReset->FROM->domain));
+	memset(SmtpStatusToReset->FROM->user,0x00,strlen(SmtpStatusToReset->FROM->user));
+	while(isAddress(SmtpStatusToReset->TO[i])){
+		memset(SmtpStatusToReset->TO[i]->domain,0x00,strlen(SmtpStatusToReset->TO[i]->domain));
+		memset(SmtpStatusToReset->TO[i]->user,0x00,strlen(SmtpStatusToReset->TO[i]->user));
+		i++;
+	}
+}
+void AddSmtpTO(SmtpStatus *SmtpStatusSource,SmtpAddress* SmtpAddressToAdd){
+	int i=0;
+	// On ajoute a la fin d'autre adresse l'adresse a ajouter
+	// On ecrase les adresse qui sont non conforme (voir isAddress)
+	while(isAddress(SmtpStatusSource->TO[i])){
+		i++;
+	}
+	SmtpStatusSource->TO[i++]->user=strdup(SmtpAddressToAdd->user);
+	SmtpStatusSource->TO[i++]->domain=strdup(SmtpAddressToAdd->domain);
 
 }
 char* GetSmtpReplyTextByCode(int replyCode)
@@ -87,11 +117,10 @@ void DefineReply(SmtpStatus *Status,char *clientAwnser){
 
 	static char delimiters[] = " :<>@";
 
-
 	startStr = sizeof(char)*4;
 	int i=0,replyCode=0;
 	//découpage de la reponse en Token (separation des espace et <>)
-	if((*Status).statusCode!=354){
+	if(Status->statusCode!=354){
 		while ((currentToken = strsep(pBuff,delimiters))){
 			if (strcmp(currentToken, "") && strcmp(currentToken, "from") &&
 						strcmp(currentToken, "to"))
@@ -126,22 +155,22 @@ void DefineReply(SmtpStatus *Status,char *clientAwnser){
 				//Check if contains a "FROM" part
 				printf("\nFROM ? : %s@%s \n",Token[2],Token[3]);
 				//On alimente Le status avec l'adresse source
-				(*Status).FROM.user=strdup(Token[2]);
-				(*Status).FROM.domain=strdup(Token[3]);
+				Status->FROM->user=strdup(Token[2]);
+				Status->FROM->domain=strdup(Token[3]);
 				replyCode=250;
 			}else if(strncmp("RCPT",Token[0],startStr)==0){
 				printf("\n TO ? : %s@%s \n",Token[2],Token[3]);
 				replyCode=250;
 				// On alimente le status avec laddresse de dest.
-				(*Status).TO.user=strdup(Token[2]);
-				(*Status).TO.domain=strdup(Token[3]);
+				SmtpAddress* TO;
+				TO->user=strdup(Token[2]);
+				TO->domain=strdup(Token[3]);
+				// On ajoute le TO a la liste des TO (pour la gestion des CC)
+				AddSmtpTO(Status,TO);
 			}else if(strncmp("RSET",Token[0],startStr)==0){
 				//Reset Received
 				printf("\n RESET !");
-				memset((*Status).FROM.domain,0x00,strlen((*Status).FROM.domain));
-				memset((*Status).FROM.user,0x00,strlen((*Status).FROM.user));
-				memset((*Status).TO.domain,0x00,strlen((*Status).TO.domain));
-				memset((*Status).TO.user,0x00,strlen((*Status).TO.user));
+				SmtpStatusReset(Status);
 				replyCode=250;
 			}else if(strncmp("DATA",Token[0],startStr)==0){
 				printf("\n DATA !");
