@@ -65,9 +65,9 @@ for(;;)
 		/* Inside client process */
 		close(listenfd);
 
-		SmtpStatus *Status = reception(connfd);//fonction chargée de travailler avec le client
+		SmtpStatus Status = reception(connfd);//fonction chargée de travailler avec le client
 		//Envoi du message au prochian relai
-		envoi(Status);
+		envoi(&Status);
 
 		close(connfd);
 		}

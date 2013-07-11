@@ -10,8 +10,8 @@ typedef struct SmtpAddress{
 typedef struct SmtpStatus{
 	int statusCode;
 	char* awnser;
-	SmtpAddress* FROM;
-	SmtpAddress* TO[8];
+	SmtpAddress FROM;
+	SmtpAddress TO[7];
 	char *DATA;
 }SmtpStatus;
 
@@ -25,14 +25,12 @@ typedef struct SmtpReply{
 	char* replyText;
 
 	}SmtpReply;
-bool_t isAddress(SmtpAddress* SmtpAddress);
+bool_t isAddress(SmtpAddress SmtpAddress);
 char* GetSmtpReplyTextByCode(int replyCode);
 char* ConstructSmtpReply(int replyCode);
+void SmtpStatusAddTO(SmtpStatus* Status, SmtpAddress TO);
 void DefineReply(SmtpStatus *Status,char *clientAwnser);
-
-SmtpAddress* SmtpAddressClone(SmtpAddress* SmtpAddressSource);
-void AddSmtpTO(SmtpStatus *SmtpStatusSource,SmtpAddress* SmtpAddressToAdd);
-SmtpAddress* NewSmtpAddress(void);
-SmtpStatus* NewSmtpStatus(void);
-void SmtpAdressToString(char* buff,SmtpAddress* Adress);
+SmtpStatus SmtpStatusClone(SmtpStatus SmtpStatusSource);
+SmtpAddress SmtpAddressClone(SmtpAddress SmtpAddressSource);
+void SmtpAdressToString(char* buff,SmtpAddress Adress);
 #endif
