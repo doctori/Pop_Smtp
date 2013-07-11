@@ -54,12 +54,10 @@ SmtpAddress* SmtpAddressClone(SmtpAddress* SmtpAddressSource){
 }
 SmtpStatus* NewSmtpStatus(void){
 	SmtpStatus *NewSmtpStatus;
-	if(NewSmtpStatus){
-		(*NewSmtpStatus).DATA=NULL;
+		(*NewSmtpStatus->DATA)=malloc(sizeof(char)*BUFFER_SIZE);
 		memset(NewSmtpStatus->DATA,0x00,sizeof(char)*BUFFER_SIZE);
 		NewSmtpStatus->FROM=NewSmtpAddress();
 		NewSmtpStatus->statusCode=0;
-	}
 	return(NewSmtpStatus);
 }
 SmtpAddress* NewSmtpAddress(void){
